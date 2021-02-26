@@ -62,7 +62,7 @@ typedef enum {
                             // the start and finish gantry states are call NPOS times
                             // each time the gantry is move to a new position, a picture is taken
 
-    START_GANTRY_MOVE,      // prepare gantry x and y asix for movement
+    START_GANTRY_MOVE,      // prepare gantry x and y axis for movement
     FINISH_GANTRY_MOVE,     // complete the gantry moves.  
 
     START_PICTURE,
@@ -117,7 +117,7 @@ int homeMotor(SpeedyStepper* motor, int homeDI){
     // motor = pointer to speedystepper structure
     // homeDI = the digital pin for the home switch
 
-    motor->setupStop();  // step in case something is running
+    motor->setupStop();  // stop in case something is running
 
     motor->setSpeedInStepsPerSecond(?); // something slow for homing
     motor->setAccelerationInStepsPerSecondPerSecond(?); // something slow for homing
