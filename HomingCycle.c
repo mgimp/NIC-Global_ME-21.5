@@ -3,6 +3,7 @@ switch (currState){
             // flash the LED until
             digitalWrite(DO_RUNNING,!digitalRead(DO_RUNNING);
             msDelay(500);
+            // I just add this for fun
 
             // right now there is no way of exiting an error condition
             // this is something to be decided
