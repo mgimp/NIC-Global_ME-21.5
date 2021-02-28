@@ -6,14 +6,13 @@ a significant amount of the code.
 
 Seattle University
     Mechanical Engineering Department
-    Engineering Design Group 21.5
-NIC Global
-    Vision System for Silkscreen Inspection
-David Schulman, Linh Ngo, Matthew Gimpelevich, Robert Wheeler
+        Engineering Design Group 21.5: NIC Global
+            Vision System for Silkscreen Inspection
+        David Schulman, Linh Ngo, Matthew Gimpelevich, Robert Wheeler
 27FEB2021
 
 THIS CODE is meant to service the Vision System for Silkscreen Inspection as designed by group 21.5
-It uses a basic state machine to control a camera, gantry systems, limit switch, and operating consol using an Arduino Mega
+It uses a basic state machine to control a camera, gantry systems, limit switch, and operating consol using an Arduino Mega and the SpeedyStepper library.
 Camera: 
 Actuator Model: FUYU FSL Series
 Stepper Motor: Nema 23
