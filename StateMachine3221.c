@@ -1,6 +1,3 @@
-
-#include "SpeedyStepper.h"
-
 // digital IO pins
 // DO = digital output
 // DI = digital input
@@ -40,7 +37,6 @@
 #define NPOS 8   // number of points the gantry must move to capture the pictures
 #define Y 0    // the long gantry direction
 #define X 1    // the short gantry direction
-
 
 // Global Variables
 

@@ -21,6 +21,8 @@ Brain: Arduino Mega
 
 // -----EQUIPMENT NOTES-----
 // Limit switches probably fail LOW
+// xgantry is 350mm
+// ygantry is 900mm
 
 // -----MOVEMENT-----
 // LOW = AWAY FROM MOTOR

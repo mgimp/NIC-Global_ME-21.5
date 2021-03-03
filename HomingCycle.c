@@ -1,175 +1,227 @@
+// -----LIBRARIES-----
 // SETUP STEPPER MOTOR VARIABLES
 #include SpeedyStepper.h
 
-// DEFINE GANTRY NAMES
-SpeedyStepper gantryLong;  // The big one
-SpeedyStepper gantryShort;  // The small one
-SpeedyStepper pusher;
-SpeedyStepper tray;
+// -----DEFINITIONS-----
+// These definitions are used in place of pin numbers throughout the code
+// The usefulness comes from setting all of the necessary pin numbers in a single place in the code
+// definitions are not designed to be updated in the code
 
-// SETUP CAMERA CONTROLS
-// Assumes controlled by two pins
-void cameraRead(){
-    return 1;
-}
-void cameraWrite(){
-    return 1;
-}
+// digital IO pins
+// DO = digital output
+// DI = digital input
 
-// SETUP HOMING SWITCH VARIABLES
-bool gantryLong_Switch = digitalRead(i);
-bool gantryShort_Swtich = digitalRead(j);
-bool pusher_Switch = digitalRead(k);
-bool tray_Switch = digitalRead(l);
+// DIR = direction
+// PUL = pulse
+#define DO_XGANTRY_DIR   ?
+#define DO_XGANTRY_PUL   ?
+#define DO_YGANTRY_DIR   ?
+#define DO_YGANTRY_PUL   ?
+#define DO_WIPER_DIR   ?
+#define DO_WIPER_PUL   ?
+#define DO_TRAY_DIR   ?
+#define DO_TRAY_PUL  ?
 
-// SETUP CONTROLS
-bool onButton = digitalRead(m);
-bool stopButton = digitalRead(n);
+// home switch should be setup so there are alway HIGH unless triggered
+// this provide a better default in case the wiring fails
+// HOME should always be at the motor side of the actuator
+#define DI_HOME_XGANTRY  ?
+#define DI_HOME_YGANTRY  ?
+#define DI_HOME_WIPER  ?
+#define DI_HOME_TRAY  ?   
 
-// LEDs
-// Write 0 or 1 for LED functions to control output
+#define DI_EMERGENCYSTOP ? // a locking switch that stops all processes
+#define DI_START ?   // a momentary switch to start the inspection
+
+// Lights
+#define DO_Ready ?      //Green LED on for ready status
+#define DO_WIP ?        //Yellow LED blinking for cycle in progress
+#define DO_Part_Failure ?  //ORANGE LED Blinking for part failure
+#define DO_System_Failure ? //RED LED Steady for system failure
+
+// camera
+#define DO_CAM_TAKEPICTURE ?
+#define DI_CAM_GOTPICTURE ?
+#define DI_CAM_FAILED ?
+
+
+#define NPOS 8   // number of points the gantry must move to capture the pictures
+#define Y 0    // the long gantry direction
+#define X 1    // the short gantry direction
+
+// -----ENUMERATION-----
+// enumeration of possible cases
+// these don't have to be listed in order in this list
+// All variables created by this type of enumeration are int
+typedef enum {
+
+    currState, // Placeholder for state
+
+    WAIT_TO_START,  // Get into position for a part and wait for start button
+
+    HOMING_CYCLE, // Homing procedure; WARNING: This is a blocking case
+
+    ERROR,   // general for things gone wrong
+
+    EMERGENCY_STOP, // Button pushed E. Stop
+
+} systemState;
+
+// -----SPEEDYSTEPPER VARIABLES-----
+// Uses a typedef provided by SpeedyStepper
+SpeedyStepper ss_gantryy;  // 900mm
+SpeedyStepper ss_gantryx;  // 350mm
+SpeedyStepper ss_wiper; // 500mm
+SpeedyStepper ss_tray;  // 1000mm
+
+// -----LED QUICK FUNCTIONS-----
+// The point is to make control of LEDs easier to write
+// Write 0 or 1 in place of x for LED functions to control output
 void LED_Ready(x){
-    pinMode(o, OUTPUT);
-    digitalWrite(o, x);
+    digitalWrite(DO_Ready, x);
     return 1;
 }
-void LED_InProgress(x){
-    pinMode(p, OUTPUT);
-    digitalWrite(p, x);
+void LED_WIP(x){
+    digitalWrite(DO_WIP, x);
     return 1;
 }
-void LED_Failure(x){
-    pinMode(q, OUTPUT);
-    digitalWrite(q, x);
+void LED_Part_Failure(x){
+    digitalWrite(DO_Part_Failure, x);
     return 1;
 }
-void LED_Error(x){
-    pinMode(r, OUTPUT);
-    digitalWrite(r, x);
+void LED_System_Failure(x){
+    digitalWrite(DO_System_Failure, x);
     return 1;
 }
 
+// -----MOTOR SPEED FUNCTIONS-----
+int initializeMaxMotorSpeeds(){
+    // initialize the motor speeds and accelerations at maximum for single motor control
+
+    ss_gantryx.setMillimetersPerMillimeter(17.5 * 2);
+    ss_gantryy.setMillimetersPerMillimeter(17.5 * 2);
+    ss_wiper.setMillimetersPerMillimeter(17.5 * 2);
+    ss_tray.setMillimetersPerMillimeter(17.5 * 2);
+
+    ss_gantryy.setSpeedInMillimetersPerSecond(8000/17.5);
+    ss_gantryy.setAccelerationInMillimetersPerSecondPerSecond(9500/17.5);
+
+    ss_gantryx.setSpeedInMillimetersPerSecond(8000/17.5);
+    ss_gantryx.setAccelerationInMillimetersPerSecondPerSecond(9500/17.5);
+
+    ss_wiper.setSpeedInMillimetersPerSecond(8000/17.5);
+    ss_wiper.setAccelerationInMillimetersPerSecondPerSecond(9500/17.5);
+
+    ss_tray.setSpeedInMillimetersPerSecond(8000/17.5);
+    ss_tray.setAccelerationInMillimetersPerSecondPerSecond(9500/17.5);
+    
+}
+
+// -----SETUP-----
 Setup() {
+
+    // SpeedyStepper() sets most defaul values
     SpeedyStepper.SpeedyStepper()
 
     // STEPPER MOTOR SETUP
-    gantryLong.connectToPins(a,b);
-    gantryShort.connectToPins(c,d);
-    pusher.connectToPins(e,f);
-    tray.connectToPins(g,h);
+    // connectToPins(PUL, DIR)
+    ss_gantryy.connectToPins(DO_XGANTRY_PUL, DO_XGANTRY_DIR);
+    ss_gantryx.connectToPins(DO_YGANTRY_PUL, DO_YGANTRY_DIR);
+    ss_wiper.connectToPins(DO_WIPER_PUL, DO_WIPER_DIR);
+    ss_tray.connectToPins(DO_TRAY_PUL, DO_TRAY_DIR);
 
-    // SETUP STEPPER MOTOR SPEEDS AND ACCELERATIONS
-    // CONVERSION: 17.5 steps/mm
-    // Vmax = 8000 steps/s
-    // Amax = 9500 steps/s^2
-    gantryLong.setStepsPerMillimeter(17.5);
-    gantryShort.setStepsPerMillimeter(17.5);
-    pusher.setStepsPerMillimeter(17.5);
-    tray.setStepsPerMillimeter(17.5);
+    // assign the homing digital inputs
+    pinMode(DI_HOME_XGANTRY,INPUT);
+    pinMode(DI_HOME_YGANTRY,INPUT);
+    pinMode(DI_HOME_WIPER,INPUT);
+    pinMode(DI_HOME_TRAY,INPUT);
 
-    gantryLong.setSpeedInMillimetersPerSecond(8000/17.5);
-    gantryLong.setAccelerationInMillimetersPerSecondPerSecond(9500/17.5);
+    // Set the LED pins to OUTPUT
+    pinMode(DO_Ready, OUTPUT);
+    pinMode(DO_WIP, OUTPUT);
+    pinMode(DO_Part_Failure, OUTPUT);
+    pinMode(DO_System_Failure, OUTPUT);
 
-    gantryShort.setSpeedInMillimetersPerSecond(8000/17.5);
-    gantryShort.setAccelerationInMillimetersPerSecondPerSecond(9500/17.5);
+    // assign the start button digital inputs
+    pinMode(DI_EMERGENCYSTOP,INPUT);
+    pinMode(DI_START,INPUT)
+    
+    // Test LEDs (Flash all LEDs a few seconds, then turn all off)
+    LED_Ready(1);
+    LED_WIP(1);
+    LED_Part_Failure(1);
+    LED_System_Failure(1);
 
-    pusher.setSpeedInMillimetersPerSecond(8000/17.5);
-    pusher.setAccelerationInMillimetersPerSecondPerSecond(9500/17.5);
+    // delay() operates in milliseconds
+    delay(2000);
 
-    tray.setSpeedInMillimetersPerSecond(8000/17.5);
-    tray.setAccelerationInMillimetersPerSecondPerSecond(9500/17.5);
-
-    // STARTING ALL LEDs OFF
     LED_Ready(0);
-    LED_InProgress(0);
-    LED_Failure(0);
-    LED_Error(0);
+    LED_WIP(0);
+    LED_Part_Failure(0);
+    LED_System_Failure(0);
 
-}
+    currState = HOMING_CYCLE;
+}   
 
 Loop() {
 
+    // Checks to see if the emergency stop button has been pressed
+    if(digitalRead(DI_EMERGENCYSTOP)){
+        currState = EMERGENCY_STOP;
+    }
+
     switch (currState){
             case HOMING_CYCLE:
-            // Starts at max speed
-            // ASSUMING that a value of 1 from a switch means that it IS being pressed
-            // ASSUMING that relative motion has (positive = away from motor) (negative = toward motor)
-            // QUESTION: Should we slow down the gantries prior to seeking the switch?
+            // This is a BLOCKING CASE
+            // case uses the SpeedyStepper pre-build blocking homing function
+            // SpeedyStepper.ccp line[325]
+            // moveToHomeInMillimeters(long directionTowardHome, float speedInMillimetersPerSecond, long maxDistanceToMoveInMillimeters, int homeLimitSwitchPin)
 
-                // LED STUFF
-                LED_Ready(0);
-                LED_InProgress(1);
-                LED_Failure(0);
-                LED_Error(0);
+            // The basic function is that the homing cycle will cycle to the start of loop() after every motor is homed
+            // moveToHomeInMillimeters() will return false if the homing limit switch is not pressed for a set distance
+            // if status==false when cycling then an error state will be called
 
-                // MAKE SURE ALL GANTRIES ARE AT THE STARTING POSITION
-                int mmCount = 0;
-                while((gantryLong_Switch < 1) && (stopButton < 1)){
-                    gantryLong.moveRelativeInMillimeters(-10);
-                    // ASSUMES that we are able to catch motion complete every time
-                    if(gantryLong.motionComplete()){
-                        mmCount += 1;
-                    }
-                    elif (mmCount > 90){
-                        currState = HOMING_ERROR;
-                        // ASSUMES THIS WILL THIS IMMEDIATELY BREAK THE HOMING_CYCLE CASE
-                        break;
-                    }
+                int step;   // variable to track progress of homing and escape the while loop
+                bool status;
+
+                if (step = 0 || step = 5){
+                    // LED STUFF
+                    LED_Ready(0);
+                    LED_InProgress(1);
+                    LED_Failure(0);
+                    LED_Error(0);
+
+                    step = 1
                 }
-                gantryLong.setupStop();
-                mmCount = 0;
-            
-                while((gantryShort_Switch < 1) && (stopButton < 1)){
-                    gantryShort.moveRelativeInMillimeters(-10);
-                    // ASSUMES that we are able to catch motion complete every time
-                    if(gantryShort.motionComplete()){
-                        mmCount += 1;
-                    }
-                    elif (mmCount > 35){
-                        currState = HOMING_ERROR;
-                        // ASSUMES THIS WILL THIS IMMEDIATELY BREAK THE HOMING_CYCLE CASE
-                        break;
-                    }
+                
+                // directionTowardHome is set to -1, toward motor
+                // speedInMillimetersPerSecond is set to half max speed
+                // maxDistanceToMoveInMillimeters is set to 900mm, the length of gantry Y
+                if (step == 1){
+                    status = ss_gantryy.moveToHomeInMillimeters(-1, 4000/17.5, 900, DI_HOME_YGANTRY);
                 }
-                gantryShort.setupStop();
-                mmCount = 0;
 
-                while((pusher_Switch < 1) && (stopButton < 1)){
-                    pusher.moveRelativeInMillimeters(-10);
-                    // ASSUMES that we are able to catch motion complete every time
-                    if(pusher.motionComplete()){
-                        mmCount += 1;
-                    }
-                    elif (mmCount > 50){
-                        currState = HOMING_ERROR;
-                        // ASSUMES THIS WILL THIS IMMEDIATELY BREAK THE HOMING_CYCLE CASE
-                        break;
-                    }
+                // maxDistanceToMoveInMillimeters is set to 350mm, the length of gantry X
+                if (step == 2){
+                    status == ss_gantryx.moveToHomeInMillimeters(-1, 4000/17.5, 350, DI_HOME_XGANTRY);
                 }
-                pusher.setupStop();
-                mmCount = 0;
 
-                while((tray_Switch < 1) && (stopButton < 1)){
-                    tray.moveRelativeInMillimeters(-10);
-                    // ASSUMES that we are able to catch motion complete every time
-                    if(tray.motionComplete()){
-                        mmCount += 1;
-                    }
-                    elif (mmCount > 100){
-                        currState = HOMING_ERROR;
-                        // ASSUMES THIS WILL THIS IMMEDIATELY BREAK THE HOMING_CYCLE CASE
-                        break;
-                    }
+                // maxDistanceToMoveInMillimeters is set to 500mm, the length of the wiper actuator
+                if (step == 3){
+                    status = ss_wiper.moveToHomeInMillimeters(-1, 4000/17.5, 500, DI_HOME_WIPER);
                 }
-                tray.setupStop();
 
-                // SET STARTING POSITION TO 0
-                gantryLong.setCurrentPositionInMillimeters(0);
-                gantryShort.setCurrentPositionInMillimeters(0);
-                pusher.setCurrentPositionInMillimeters(0);
-                tray.setCurrentPositionInMillimeters(0);
+                // maxDistanceToMoveInMillimeters is set to 1000mm, the length of the tray actuator
+                if (step == 4){
+                    status = ss_tray.moveToHomeInMillimeters(-1, 4000/17.5, 1000, DI_HOME_TRAY);
+                    currState = WAIT_TO_START;  // Whatever case gets into ready position
+                }
 
-                currState = GET_READY;
+                if (status == false){
+                    currState = ERROR;
+                }
+
+                step++;
             
             break;
     }
