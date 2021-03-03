@@ -60,6 +60,8 @@ typedef enum {
     WAIT_TO_START,  // Get into position for a part and wait for start button
 
     HOMING_CYCLE, // Homing procedure; WARNING: This is a blocking case
+    START_HOMING_CYCLE, // initialize variables for homing
+    END_HOMING_CYCLE, // clean up after homing
 
     ERROR,   // general for things gone wrong
 
@@ -163,6 +165,7 @@ Setup() {
     currState = HOMING_CYCLE;
 }   
 
+int homingstep;  // variable for incrementing a step count inside of a state.  Be sure to initialize this before you begin your state
 Loop() {
 
     // Checks to see if the emergency stop button has been pressed
@@ -171,8 +174,18 @@ Loop() {
     }
 
     switch (currState){
+        case START_HOMING_CYCLE:
+                    // LED STUFF
+                    LED_Ready(0);
+                    LED_InProgress(1);
+                    LED_Failure(0);
+                    LED_Error(0);
+                    homingstep = 1
+                   currState=HOMING_CYCLE:
+            break;
+            
             case HOMING_CYCLE:
-            // This is a BLOCKING CASE
+            // This is a partially BLOCKING CASE.  It blocks during the homing of each axis, but releases between moves.
             // case uses the SpeedyStepper pre-build blocking homing function
             // SpeedyStepper.ccp line[325]
             // moveToHomeInMillimeters(long directionTowardHome, float speedInMillimetersPerSecond, long maxDistanceToMoveInMillimeters, int homeLimitSwitchPin)
@@ -181,38 +194,30 @@ Loop() {
             // moveToHomeInMillimeters() will return false if the homing limit switch is not pressed for a set distance
             // if status==false when cycling then an error state will be called
 
-                int step;   // variable to track progress of homing and escape the while loop
+//  int step static or global, otherwise they will be reinitialized everytime through the Loop() function
+//   it was renamed to homingstep.
+//   int step;   // variable to track progress of homing and escape the while loop
                 bool status;
-
-                if (step = 0 || step = 5){
-                    // LED STUFF
-                    LED_Ready(0);
-                    LED_InProgress(1);
-                    LED_Failure(0);
-                    LED_Error(0);
-
-                    step = 1
-                }
                 
                 // directionTowardHome is set to -1, toward motor
                 // speedInMillimetersPerSecond is set to half max speed
                 // maxDistanceToMoveInMillimeters is set to 900mm, the length of gantry Y
-                if (step == 1){
+                if (homingstep == 1){
                     status = ss_gantryy.moveToHomeInMillimeters(-1, 4000/17.5, 900, DI_HOME_YGANTRY);
                 }
 
                 // maxDistanceToMoveInMillimeters is set to 350mm, the length of gantry X
-                if (step == 2){
+                if (homingstep == 2){
                     status == ss_gantryx.moveToHomeInMillimeters(-1, 4000/17.5, 350, DI_HOME_XGANTRY);
                 }
 
                 // maxDistanceToMoveInMillimeters is set to 500mm, the length of the wiper actuator
-                if (step == 3){
+                if (homingstep == 3){
                     status = ss_wiper.moveToHomeInMillimeters(-1, 4000/17.5, 500, DI_HOME_WIPER);
                 }
 
                 // maxDistanceToMoveInMillimeters is set to 1000mm, the length of the tray actuator
-                if (step == 4){
+                if (homingstep == 4){
                     status = ss_tray.moveToHomeInMillimeters(-1, 4000/17.5, 1000, DI_HOME_TRAY);
                     currState = WAIT_TO_START;  // Whatever case gets into ready position
                 }
@@ -220,9 +225,16 @@ Loop() {
                 if (status == false){
                     currState = ERROR;
                 }
-
-                step++;
+                homingstep++;            
+            break;
             
+            case END_HOMING_CYCLE:
+                    // LED STUFF and any other final homing procedures
+                    LED_Ready(0);
+                    LED_InProgress(0);
+                    LED_Failure(0);
+                    LED_Error(0);
+                  currState = WAIT_TO_START;
             break;
     }
 }
