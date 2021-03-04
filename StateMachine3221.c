@@ -300,11 +300,12 @@ void loop() {
                 if ((currMove > NPOS)  && digitalRead(DI_CAM_MISPRINT) ==LOW) {
                     // finished all of the inspections and they all passed
                     state = START_WIPER_MOVE;
-            } else {
-                 // record a failure
-                if (digitalRead(DI_CAM_MISPRINT)==HIGH){
-                    state = PART_COMPLIANCE_FAILURE // failed inspection
-                }     
+                }
+                else {
+                    if (digitalRead(DI_CAM_MISPRINT)==HIGH){
+                        state = PART_COMPLIANCE_FAILURE // failed inspection
+                     // record a failure (? within compliance case)
+               }     
             }
             break;
                          
@@ -328,7 +329,7 @@ void loop() {
             break; 
 
         case START_WIPER_MOVE_IN:
-            ss_wiper.setupMoveInMilimeter(?);
+            ss_wiper.setupMoveInMilimeter(-480);
             state = FINISH_WIPER_MOVE_IN;
             break;
 
@@ -340,7 +341,7 @@ void loop() {
             break;
 
         case START_TRAY_MOVE_OUT:
-            ss_tray.setupMoveInMilimeter(?);
+            ss_tray.setupMoveInMilimeter(980);
             state = FINISH_TRAY_MOVE_OUT;
             break;
 
@@ -352,9 +353,8 @@ void loop() {
             break;
 
          case START_TRAY_MOVE_IN:
-                ss_tray.setupMoveInMilimeter(?);
+                ss_tray.setupMoveInMilimeter(-980);
                 state = FINISH_TRAY_MOVE_IN;
-           
             break;
 
         case  FINISH_TRAY_MOVE_IN:   
