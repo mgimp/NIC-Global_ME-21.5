@@ -1,6 +1,6 @@
 // -----LIBRARIES-----
 // SETUP STEPPER MOTOR VARIABLES
-#include SpeedyStepper.h
+#include "SpeedyStepper.h"
 
 // -----DEFINITIONS-----
 // These definitions are used in place of pin numbers throughout the code
@@ -55,19 +55,19 @@
 // All variables created by this type of enumeration are int
 typedef enum {
 
-    currState, // Placeholder for state
-
     WAIT_TO_START,  // Get into position for a part and wait for start button
 
-    HOMING_CYCLE, // Homing procedure; WARNING: This is a blocking case
+    HOMING_CYCLE, // Homing procedure; WARNING: This is a partially blocking case
     START_HOMING_CYCLE, // initialize variables for homing
     END_HOMING_CYCLE, // clean up after homing
 
-    ERROR,   // general for things gone wrong
+    ERROR_CONDITION,   // general for things gone wrong
 
     EMERGENCY_STOP, // Button pushed E. Stop
 
 } systemState;
+
+systemState currState;  // holds current case
 
 // -----SPEEDYSTEPPER VARIABLES-----
 // Uses a typedef provided by SpeedyStepper
@@ -122,7 +122,7 @@ int initializeMaxMotorSpeeds(){
 // -----SETUP-----
 Setup() {
 
-    // SpeedyStepper() sets most defaul values
+    // SpeedyStepper() sets most default values
     SpeedyStepper.SpeedyStepper()
 
     // STEPPER MOTOR SETUP
@@ -223,7 +223,7 @@ Loop() {
                 }
 
                 if (status == false){
-                    currState = ERROR;
+                    currState = ERROR_CONDITION;
                 }
                 homingstep++;            
             break;
