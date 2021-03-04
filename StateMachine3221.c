@@ -300,8 +300,8 @@ void loop() {
                 if ((currMove > NPOS)  && digitalRead(DI_CAM_MISPRINT) ==LOW) {
                     // finished all of the inspections and they all passed
                     state = START_WIPER_MOVE;
-                }
-                else {
+                    }
+                )else {
                     if (digitalRead(DI_CAM_MISPRINT)==HIGH){
                         state = PART_COMPLIANCE_FAILURE // failed inspection
                      // record a failure (? within compliance case)
