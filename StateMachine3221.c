@@ -25,7 +25,7 @@
 // Lights
 #define DO_Ready ?      //Green LED on for ready status
 #define DO_WIP ?        //Yellow LED blinking for cycle in progress
-#define D0_Part_Failure ?  //RED LED Blinking for part failure
+#define DO_Part_Failure ?  //RED LED Blinking for part failure
 #define DO_System_Failure ? //RED LED Steady for system failure
 
 // camera
@@ -87,6 +87,8 @@ typedef enum {
     FINISH_WIPER_MOVE_OUT,
     START_WIPER_MOVE_IN,    
     FINISH_WIPER_MOVE_IN,
+    
+    PART_COMPLIANCE_FAILURE,
 
     ERROR_CONDITION,           // error state.  currently there is no way to recover from this state.  This needs fixing.
 
@@ -295,17 +297,22 @@ void loop() {
         case FINISH_PICTURE:
             if (digitalRead(DI_CAM_FAILED)==LOW) {
                 currMove++; // the next picture
-                if (currMove > NPOS) {
+                if ((currMove > NPOS)  && digitalRead(DI_CAM_MISPRINT) ==LOW) {
                     // finished all of the inspections and they all passed
                     state = START_WIPER_MOVE;
-                }
             } else {
-                // failed inspection
-                // record a failure
-                // don't run the wiper
-                state = START_TRAY_MOVE_OUT;
+                 // record a failure
+                if (digitalRead(DI_CAM_MISPRINT)==HIGH){
+                    state = PART_COMPLIANCE_FAILURE // failed inspection
+                }     
             }
             break;
+                         
+        case PART_COMPLIANCE_FAILURE:
+             digitalWrite(DO_Part_Failure == HIGH);
+             state = START_TRAY_MOVE_OUT;
+             break;
+            
 
         case START_WIPER_MOVE_OUT:
             ss_wiper.setupMoveInMilimeter(480);
