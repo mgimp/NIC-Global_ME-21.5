@@ -32,6 +32,7 @@
 #define DO_CAM_TAKEPICTURE ?
 #define DI_CAM_GOTPICTURE ?
 #define DI_CAM_FAILED ?
+#define DI_CAM_MISPRINT ?
 
 
 #define NPOS 8   // number of points the gantry must move to capture the pictures
