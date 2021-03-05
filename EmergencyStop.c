@@ -1,3 +1,9 @@
+// this should be incorporated into the state machine
+// what is the state that gets you into this state
+// how do you exit this state
+
+// do we need an EMERGENCY_STOP_INPROGRESS state that is where you land to wait for the E.S. to exit?
+
 // REFERENCE OF VARIABLES FROM statemachine.c
 // -----SPEEDYSTEPPER VARIABLES-----
 // Uses a typedef provided by SpeedyStepper
@@ -18,12 +24,16 @@ void EmergencyStop(void)
     ss_wiper.setupStop();
     ss_tray.setupStop();
 
+    // I don't believe the following code is necessary
+    // the setupStop function should ensure the motors are stopped
+        
     // processMovement() returns true if movement complete, 
     // and false not a final target 
     // position yet
     if (ss_gantryy.processMovement() == true)
     {
         // motor is completely stop
+        // nothing is done in here so we don't need these checks
     }
     if (ss_gantryx.processMovement() == true)
     {
