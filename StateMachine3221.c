@@ -296,8 +296,8 @@ void loop() {
 
         case FINISH_PICTURE:
             if (digitalRead(DI_CAM_FAILED)==LOW) {
-                currMove++; // the next picture
-                if ((currMove > NPOS)  && digitalRead(DI_CAM_MISPRINT) ==LOW) {
+                currPos++; // the next picture
+                if ((currPos > NPOS)  && digitalRead(DI_CAM_MISPRINT) ==LOW) {
                     // finished all of the inspections and they all passed
                     state = START_WIPER_MOVE;
                     }
