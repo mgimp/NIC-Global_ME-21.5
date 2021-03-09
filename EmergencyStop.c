@@ -7,44 +7,41 @@
 // REFERENCE OF VARIABLES FROM statemachine.c
 // -----SPEEDYSTEPPER VARIABLES-----
 // Uses a typedef provided by SpeedyStepper
-SpeedyStepper ss_gantryy;  // 900mm
-SpeedyStepper ss_gantryx;  // 350mm
-SpeedyStepper ss_wiper; // 500mm
-SpeedyStepper ss_tray;  // 1000mm
+//SpeedyStepper ss_gantryy;  // 900mm
+//SpeedyStepper ss_gantryx;  // 350mm
+//SpeedyStepper ss_wiper; // 500mm
+//SpeedyStepper ss_tray;  // 1000mm
 
-void EmergencyStop(void)
-{
-    // turn on RED LED indicating users have pressed emergency stop button
-    LED_System_Failure(1);
-    
-    // setupStop() will move the target position 
-    // so that the motor will begin deceleration now
+case EMERGENCY_STOP_START:
+    LED_System_Failure(1); // turn on the RED LED when E.stop button is pressed
+    //update to new case and then break
+    currState = EMERGENCY_STOP_INPROGRESS; //go to emergency stop progress state
+    break; 
+
+case EMERGENCY_STOP_INPROGRESS:
+    // Decelerating all four motors to zero velocity
     ss_gantryy.setupStop();
     ss_gantryx.setupStop();
     ss_wiper.setupStop();
     ss_tray.setupStop();
 
-    // I don't believe the following code is necessary
-    // the setupStop function should ensure the motors are stopped
-        
-    // processMovement() returns true if movement complete, 
-    // and false not a final target 
-    // position yet
-    if (ss_gantryy.processMovement() == true)
+    //if all 4 motors stop, update the currState to exit state
+    if (ss_gantryy.processMovement() &&  ss_gantryx.processMovement() && 
+    ss_wiper.processMovement() && ss_tray.processMovement())
     {
-        // motor is completely stop
-        // nothing is done in here so we don't need these checks
+        currState = EMERGENCY_STOP_EXIT; 
     }
-    if (ss_gantryx.processMovement() == true)
-    {
-        // motor is completely stop
-    }
-    if (ss_wiper.processMovement() == true)
-    {
-        // motor is completely stop
-    }
-    if (ss_tray.processMovement() == true)
-    {
-        // motor is completely stop
-    }
-}
+    break;
+
+case EMERGENCY_STOP_EXIT:
+    //How to release the emergency stop button?
+    //Should it go to Homing Cycle after the emergency stop exit?
+    //After motors are fixed, need some signal to turn off the emergency stop LED
+    break;
+
+
+
+
+
+
+

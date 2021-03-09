@@ -120,7 +120,10 @@ typedef enum {
     FINISH_WIPER_MOVE_IN,
 
     ERROR_CONDITION,            // error state.  currently there is no way to recover from this state.  This needs fixing.
-    EMERGENCY_STOP,             // Button pushed E. Stop
+    
+    EMERGENCY_STOP_START,             // Button pushed E. Stop
+    EMERGENCY_STOP_INPROGRESS,        // E. Stop in progress
+    EMERGENCY_STOP_EXIT               // Release E. Stop button
 
 } systemState;
 
@@ -228,7 +231,7 @@ Loop() {
 
     // Checks to see if the emergency stop button has been pressed
     if(digitalRead(DI_EMERGENCYSTOP)){
-        currState = EMERGENCY_STOP;
+        currState = EMERGENCY_STOP_START;
     }
 
     // -----SWITCH-----
