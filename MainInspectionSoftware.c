@@ -1,12 +1,12 @@
-#include "SpeedyStepper.h"
+include "SpeedyStepper.h"
 
 // digital IO pins
 // DO = digital output
 // DI = digital input
-#define DO_XGANTRY_DIR   3
-#define DO_XGANTRY_PUL   4
-#define DO_YGANTRY_DIR   1
-#define DO_YGANTRY_PUL   2
+#define DO_XGANTRY_DIR   ?
+#define DO_XGANTRY_PUL   ?
+#define DO_YGANTRY_DIR   ?
+#define DO_YGANTRY_PUL   ?
 #define DO_WIPER_DIR   ?
 #define DO_WIPER_PUL   ?
 #define DO_TRAY_DIR   ?
@@ -15,7 +15,7 @@
 // home switch should be setup so there are alway HIGH unless triggered
 // this provide a better default in case the wiring fails
 #define DI_HOME_XGANTRY  ?
-#define DI_HOME_YGANTRY  33
+#define DI_HOME_YGANTRY  ?
 #define DI_HOME_WIPER  ?
 #define DI_HOME_TRAY  ?   // the home should be on the inside of the inspection chamber
 
@@ -24,19 +24,13 @@
 
 #define DO_RUNNING  ?   // light is on if the process is running and flashing when there is an error.
 
-// Lights
-#define DO_Ready ?      //Green LED on for ready status
-#define DO_WIP ?        //Yellow LED blinking for cycle in progress
-#define D0_Part_Failure ?  //RED LED Blinking for part failure
-#define DO_System_Failure ? //RED LED Steady for system failure
-
 // camera
 #define DO_CAM_TAKEPICTURE ?
 #define DI_CAM_GOTPICTURE ?
 #define DI_CAM_FAILED ?
 
 
-#define NPOS 8   // number of points the gantry must move to capture the pictures
+#define NPOS 4   // number of points the gantry must move to capture the pictures
 #define Y 0    // the long gantry direction
 #define X 1    // the short gantry direction
 
@@ -46,15 +40,10 @@
 
 // xy position to move to.  These are in steps from the home position
 int xyposition[NPOS] = {
-    {262.5,112.5},               // First position
-    {262.5,337.5},               // Second position
-    {262.5,562.5},               // Third posistion
-    {262.5,787.5},               // Fourth position end of y axis and end of the x axis
-    {87.5, 787.5},               // Fifth position retracts the x axis
-    {87.5, 562.5},               // Sixth position
-    {87.5, 337.5},               // Seventh position 
-    {87.5, 112.5},               // Eighth position
-    {0, 0}
+    {10,13},
+    {34,23},
+    {34,22},
+    {1,123}
     }
 
 
@@ -110,16 +99,11 @@ int initializeMotorSpeeds(){
     // initialize the motor speeds and accelerations
     // these are the values used while the machine is running normally
 
-    ss_gantryx.setStepsPerMillimeter(17.5 * 2);
-    ss_gantryy.setStepsPerMillimeter(17.5 * 2);
-    ss_wiper.setStepsPerMillimeter(17.5 * 2);
-    ss_tray.setStepsPerMillimeter(17.5 * 2);
+    ss_gantryx.setSpeedInStepsPerSecond(?);
+    ss_gantryx.setAccelerationInStepsPerSecondPerSecond(?);
 
-    ss_gantryx.setSpeedInStepsPerSecond(8000);
-    ss_gantryx.setAccelerationInStepsPerSecondPerSecond(9500);
-
-    ss_gantryy.setSpeedInStepsPerSecond(8000);
-    ss_gantryy.setAccelerationInStepsPerSecondPerSecond(9500);
+    ss_gantryy.setSpeedInStepsPerSecond(?);
+    ss_gantryy.setAccelerationInStepsPerSecondPerSecond(?);
 
     ss_wiper.setSpeedInStepsPerSecond(?);
     ss_wiper.setAccelerationInStepsPerSecondPerSecond(?);
@@ -264,8 +248,8 @@ void loop() {
             break;
 
         case START_GANTRY_MOVE:
-            ss_gantryx.setupMoveInMillimeters(xyposition[currPos][X]);
-            ss_gantryy.setupMoveInMillimeters(xyposition[currPos][Y]);
+            ss_gantryx.setupMoveInSteps(xyposition[currPos][X]);
+            ss_gantryy.setupMoveInSteps(xyposition[currPos][Y]);
             state = FINISH_GANTRY_MOVE;
             break;
 
@@ -310,7 +294,7 @@ void loop() {
             break;
 
         case START_WIPER_MOVE_OUT:
-            ss_wiper.setupMoveInMilimeter(480);
+            ss_wiper.setupMoveInSteps(?);
             state = FINISH_WIPER_MOVE_OUT;
             break;
 
@@ -323,7 +307,7 @@ void loop() {
             break; 
 
         case START_WIPER_MOVE_IN:
-            ss_wiper.setupMoveInMilimeter(?);
+            ss_wiper.setupMoveInSteps(?);
             state = FINISH_WIPER_MOVE_IN;
             break;
 
@@ -335,7 +319,7 @@ void loop() {
             break;
 
         case START_TRAY_MOVE_OUT:
-            ss_tray.setupMoveInMilimeter(?);
+            ss_tray.setupMoveInSteps(?);
             state = FINISH_TRAY_MOVE_OUT;
             break;
 
@@ -347,7 +331,7 @@ void loop() {
             break;
 
          case START_TRAY_MOVE_IN:
-                ss_tray.setupMoveInMilimeter(?);
+                ss_tray.setupMoveInSteps(?);
                 state = FINISH_TRAY_MOVE_IN;
            
             break;
