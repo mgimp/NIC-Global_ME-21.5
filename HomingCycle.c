@@ -69,6 +69,9 @@ typedef enum {
 
 systemState currState;  // holds current case
 
+// -----VARIOUS GLOBAL VARIABLES-----
+bool flag_inStep = true;       // used as a flag for misstep errors; true means the actuators are in correct position
+
 // -----SPEEDYSTEPPER VARIABLES-----
 // Uses a typedef provided by SpeedyStepper
 SpeedyStepper ss_gantryy;  // 900mm
@@ -169,7 +172,7 @@ int homingstep;  // variable for incrementing a step count inside of a state.  B
 Loop() {
 
     // Checks to see if the emergency stop button has been pressed
-    if(digitalRead(DI_EMERGENCYSTOP)){
+    if (digitalRead(DI_EMERGENCYSTOP) || (flag_inStep == false)) {  // flag_inStep works checks for misstep
         currState = EMERGENCY_STOP;
     }
 
@@ -181,7 +184,7 @@ Loop() {
                     LED_Failure(0);
                     LED_Error(0);
                     homingstep = 1
-                   currState=HOMING_CYCLE:
+                   currState = HOMING_CYCLE:
             break;
             
             case HOMING_CYCLE:
@@ -192,37 +195,36 @@ Loop() {
 
             // The basic function is that the homing cycle will cycle to the start of loop() after every motor is homed
             // moveToHomeInMillimeters() will return false if the homing limit switch is not pressed for a set distance
-            // if status==false when cycling then an error state will be called
+            // if flag_inStep==false when cycling then an error state will be called
 
-//  int step static or global, otherwise they will be reinitialized everytime through the Loop() function
+//   int step static or global, otherwise they will be reinitialized everytime through the Loop() function
 //   it was renamed to homingstep.
 //   int step;   // variable to track progress of homing and escape the while loop
-                bool status;
                 
                 // directionTowardHome is set to -1, toward motor
                 // speedInMillimetersPerSecond is set to half max speed
                 // maxDistanceToMoveInMillimeters is set to 900mm, the length of gantry Y
                 if (homingstep == 1){
-                    status = ss_gantryy.moveToHomeInMillimeters(-1, 4000/17.5, 900, DI_HOME_YGANTRY);
+                    flag_inStep = ss_gantryy.moveToHomeInMillimeters(-1, 4000/17.5, 900, DI_HOME_YGANTRY);
                 }
 
                 // maxDistanceToMoveInMillimeters is set to 350mm, the length of gantry X
                 if (homingstep == 2){
-                    status == ss_gantryx.moveToHomeInMillimeters(-1, 4000/17.5, 350, DI_HOME_XGANTRY);
+                    flag_inStep == ss_gantryx.moveToHomeInMillimeters(-1, 4000/17.5, 350, DI_HOME_XGANTRY);
                 }
 
                 // maxDistanceToMoveInMillimeters is set to 500mm, the length of the wiper actuator
                 if (homingstep == 3){
-                    status = ss_wiper.moveToHomeInMillimeters(-1, 4000/17.5, 500, DI_HOME_WIPER);
+                    flag_inStep = ss_wiper.moveToHomeInMillimeters(-1, 4000/17.5, 500, DI_HOME_WIPER);
                 }
 
                 // maxDistanceToMoveInMillimeters is set to 1000mm, the length of the tray actuator
                 if (homingstep == 4){
-                    status = ss_tray.moveToHomeInMillimeters(-1, 4000/17.5, 1000, DI_HOME_TRAY);
+                    flag_inStep = ss_tray.moveToHomeInMillimeters(-1, 4000/17.5, 1000, DI_HOME_TRAY);
                     currState = WAIT_TO_START;  // Whatever case gets into ready position
                 }
 
-                if (status == false){
+                if (flag_inStep == false){
                     currState = ERROR_CONDITION;
                 }
                 homingstep++;            

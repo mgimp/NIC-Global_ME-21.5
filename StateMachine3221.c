@@ -99,6 +99,9 @@ typedef enum {
 systemState  currState;  // this holds the current system state
 int currPos;              // keeps track of where we are on the gantry
 
+// -----VARIOUS GLOBAL VARIABLES-----
+bool flag_inStep = true;       // used as a flag for misstep errors; true means the actuators are in correct position
+
 // stepper motors
 SpeedyStepper ss_gantryx;  
 SpeedyStepper ss_gantryy;   // long travel direction
@@ -204,7 +207,8 @@ void loop() {
     // check for emergencies
     // currently only looking for the emergency stop
     // but could check other things here
-    if (digitalRead(DI_EMERGENCYSTOP)) {
+    // MATT EDIT
+    if (digitalRead(DI_EMERGENCYSTOP) || (flag_inStep == false)) {  // flag_inStep works checks for misstep
         // do something
         currState = ERROR_CONDITION;
     }
@@ -273,7 +277,13 @@ void loop() {
             ss_gantryx.processMovement();
             ss_gantryy.processMovement();
 
-            if (ss_gantryx.motionComplete() &&  ss_gantryy.motionComplete()){
+            if (ss_gantryx.motionComplete() && ss_gantryy.motionComplete()){
+                // // MATT CODE
+                // Is this where we return to (0,0)?
+                // if ((digitalRead(DI_HOME_XGANTRY) == false) || (digitalRead(DI_HOME_YGANTRY) == false)){   // an extra check to see if a misstep occured
+                //     flag_inStep == false;
+                // }
+
                 state =  START_PICTURE;
             }
             break;    
@@ -333,9 +343,13 @@ void loop() {
             state = FINISH_WIPER_MOVE_IN;
             break;
 
-        case  FINISH_WIPER_MOVE_IN:   
+        case FINISH_WIPER_MOVE_IN:   
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
+                // MATT CODE
+                if (digitalRead(DI_HOME_WIPER) == false){   // an extra check to see if a misstep occured
+                    flag_inStep == false;
+                }
                 state =  START_TRAY_MOVE_OUT;
             }
             break;
@@ -345,7 +359,7 @@ void loop() {
             state = FINISH_TRAY_MOVE_OUT;
             break;
 
-        case  FINISH_TRAY_MOVE_OUT:   
+        case FINISH_TRAY_MOVE_OUT:   
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
                 state =  WAIT_TO_START;
@@ -357,9 +371,13 @@ void loop() {
                 state = FINISH_TRAY_MOVE_IN;
             break;
 
-        case  FINISH_TRAY_MOVE_IN:   
+        case FINISH_TRAY_MOVE_IN:   
             ss_tray.processMovement();
             if (ss_tray.motionComplete()){
+                // MATT CODE
+                if (digitalRead(DI_HOME_WIPER) == false){   // an extra check to see if a misstep occured
+                    flag_inStep == false;
+                }
                 state =  START_GANTRY_MOVE;
             }
             break;
