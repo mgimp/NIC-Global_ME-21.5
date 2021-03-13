@@ -1,0 +1,3 @@
+Drop flag and instead just change the case directly.
+
+Implement code that doesn't call an error for misstep until the cycle has completed.

@@ -52,7 +52,9 @@ int xyposition[NPOS] = {
 // these don't have to be listed in order in this list
 typedef enum {
    
-    INITIALIZE,             // home the motors and move the tray to the out position
+    HOMING_CYCLE,           // Homing procedure; WARNING: This is a partially blocking case
+    START_HOMING_CYCLE,     // initialize variables for homing
+    END_HOMING_CYCLE,       // clean up after homing
 
     WAIT_TO_START,          // wait for the start button, then begin the inspection
 
@@ -83,8 +85,8 @@ typedef enum {
 
 } systemState;
 
-
-
+// -----VARIOUS GLOBAL VARIABLES-----
+bool flag_inStep = true;       // used as a flag for misstep errors; true means the actuators are in correct position
 systemState  currState;  // this holds the current system state
 int currPos;              // keeps track of where we are on the gantry
 
@@ -176,7 +178,7 @@ void setup(){
     // do any other camera initialization
 
      // initialize the currState;
-    currState = INITIALIZE;
+    currState = START_HOMING_CYCLE;
     currMove = 0;
 
 }
@@ -205,39 +207,7 @@ void loop() {
             // for examlple could have the emergency stop button be latching and you need to undo it and then press start?
         break;
 
-        case INITIALIZE:
-            digitalWrite(DO_RUNNING,HIGH); // turn on the light
-            // home the motors
-            //  may need to have some process to make sure there isn't a part on the tray
-            //
-            // need to fill these in for each motor
-            // moveToHomeInSteps(long directionTowardHome, float speedInStepsPerSecond, long maxDistanceToMoveInSteps, int homeLimitSwitchPin)
-
-            if (!ss_gantryx.moveToHomeInSteps(?,?,?, DI_HOME_XGANTRY) ){
-                // home failed
-                currState = ERROR_CONDITION;
-            } 
-            else if (!ss_gantryy.moveToHomeInSteps(?,?,?, DI_HOME_YGANTRY) ){
-                // home failed
-                currState = ERROR_CONDITION;
-            } 
-            else if (!ss_tray.moveToHomeInSteps(?,?,?, DI_HOME_TRAY) ){
-                // home failed
-                currState = ERROR_CONDITION;
-            } 
-            else if (!ss_wiper.moveToHomeInSteps(?,?,?, DI_HOME_WIPER) ){
-                // home failed
-                currState = ERROR_CONDITION;
-            }
-
-            if (currState == INITTIALIZE) {
-                ss_tray.moveToPositionInSteps(?); // move the tray out
-                currState= WAIT_TO_START;
-            }
-            break;
-        //
-
-
+        // -----SCANNING CYCLE CASES-----
         case WAIT_TO_START:
             // this assume the tray is out in the home position
             // wait until the start button is pressed
@@ -347,6 +317,71 @@ void loop() {
             // error so do what every needs to be done
             delay(20);
             break;
+
+        // -----HOMING CYCLE CASES-----
+        case START_HOMING_CYCLE:
+            // LED STUFF
+            LED_Ready(0);
+            LED_InProgress(1);
+            LED_Failure(0);
+            LED_Error(0);
+            homingstep = 1
+            currState = HOMING_CYCLE:
+            break;
+            
+        case HOMING_CYCLE:
+        // This is a partially BLOCKING CASE.  It blocks during the homing of each axis, but releases between moves.
+        // case uses the SpeedyStepper pre-build blocking homing function
+        // SpeedyStepper.ccp line[325]
+        // moveToHomeInMillimeters(long directionTowardHome, float speedInMillimetersPerSecond, long maxDistanceToMoveInMillimeters, int homeLimitSwitchPin)
+
+        // The basic function is that the homing cycle will cycle to the start of loop() after every motor is homed
+        // moveToHomeInMillimeters() will return false if the homing limit switch is not pressed for a set distance
+        // if flag_inStep==false when cycling then an error state will be called
+
+        //   int step static or global, otherwise they will be reinitialized everytime through the Loop() function
+        //   it was renamed to homingstep.
+        //   int step;   // variable to track progress of homing and escape the while loop
+                
+            // directionTowardHome is set to -1, toward motor
+            // speedInMillimetersPerSecond is set to half max speed
+            // maxDistanceToMoveInMillimeters is set to 900mm, the length of gantry Y
+            if (homingstep == 1){
+                flag_inStep = ss_gantryy.moveToHomeInMillimeters(-1, 4000/17.5, 900, DI_HOME_YGANTRY);
+            }
+
+            // maxDistanceToMoveInMillimeters is set to 350mm, the length of gantry X
+            if (homingstep == 2){
+                flag_inStep == ss_gantryx.moveToHomeInMillimeters(-1, 4000/17.5, 350, DI_HOME_XGANTRY);
+            }
+
+            // maxDistanceToMoveInMillimeters is set to 500mm, the length of the wiper actuator
+            if (homingstep == 3){
+                flag_inStep = ss_wiper.moveToHomeInMillimeters(-1, 4000/17.5, 500, DI_HOME_WIPER);
+            }
+
+            // maxDistanceToMoveInMillimeters is set to 1000mm, the length of the tray actuator
+            if (homingstep == 4){
+                flag_inStep = ss_tray.moveToHomeInMillimeters(-1, 4000/17.5, 1000, DI_HOME_TRAY);
+                currState = WAIT_TO_START;  // Whatever case gets into ready position
+            }
+
+            if (flag_inStep == false){
+                currState = ERROR_CONDITION;
+            }
+
+            homingstep++;            
+            break;
+            
+        case END_HOMING_CYCLE:
+            // LED STUFF and any other final homing procedures
+            LED_Ready(0);
+            LED_InProgress(0);
+            LED_Failure(0);
+            LED_Error(0);
+            currState = WAIT_TO_START;
+            break;
+
 
     }
 
