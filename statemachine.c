@@ -293,14 +293,14 @@ Loop() {
             homingstep++;            
             break;
             
-            case END_HOMING_CYCLE:
-                // LED STUFF and any other final homing procedures
-                LED_Ready(0);
-                LED_InProgress(0);
-                LED_Failure(0);
-                LED_Error(0);
-                currState = WAIT_TO_START;
-                break;
+        case END_HOMING_CYCLE:
+            // LED STUFF and any other final homing procedures
+            LED_Ready(0);
+            LED_InProgress(0);
+            LED_Failure(0);
+            LED_Error(0);
+            currState = WAIT_TO_START;
+            break;
 
     }
 }

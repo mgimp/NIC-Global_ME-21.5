@@ -255,7 +255,6 @@ void loop() {
                 currState= WAIT_TO_START;
             }
             break;
-        //
 
 
         case WAIT_TO_START:
@@ -280,9 +279,9 @@ void loop() {
             if (ss_gantryx.motionComplete() && ss_gantryy.motionComplete()){
                 // // MATT CODE
                 // Is this where we return to (0,0)?
-                // if ((digitalRead(DI_HOME_XGANTRY) == false) || (digitalRead(DI_HOME_YGANTRY) == false)){   // an extra check to see if a misstep occured
-                //     flag_inStep == false;
-                // }
+                if ((digitalRead(DI_HOME_XGANTRY) == true) || (digitalRead(DI_HOME_YGANTRY) == true)){   // an extra check to see if a misstep occured
+                    flag_inStep == false;
+                }
 
                 state =  START_PICTURE;
             }
@@ -347,7 +346,7 @@ void loop() {
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
                 // MATT CODE
-                if (digitalRead(DI_HOME_WIPER) == false){   // an extra check to see if a misstep occured
+                if (digitalRead(DI_HOME_WIPER) == true){   // an extra check to see if a misstep occured
                     flag_inStep == false;
                 }
                 state =  START_TRAY_MOVE_OUT;
@@ -375,7 +374,7 @@ void loop() {
             ss_tray.processMovement();
             if (ss_tray.motionComplete()){
                 // MATT CODE
-                if (digitalRead(DI_HOME_WIPER) == false){   // an extra check to see if a misstep occured
+                if (digitalRead(DI_HOME_WIPER) == true){   // an extra check to see if a misstep occured
                     flag_inStep == false;
                 }
                 state =  START_GANTRY_MOVE;
