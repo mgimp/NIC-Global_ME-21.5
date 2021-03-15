@@ -1,3 +1,10 @@
-Drop flag and instead just change the case directly.
+Drop flag and instead just change the case directly. - DONE
+    
+Make sure to check if the home switch is pressed at (0,0) - DONE
+Make sure to check if switch pressed before (0,0) - DONE
 
-Implement code that doesn't call an error for misstep until the cycle has completed.
+Implement code that doesn't call an error for misstep until the cycle has completed. - ABANDONED
+
+Move my code to MainInspectionSoftware.c - DONE
+
+Should I worry about small differences between motionComplete() and checking the digitalRead(pin)?

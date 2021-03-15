@@ -168,7 +168,6 @@ Setup() {
     currState = HOMING_CYCLE;
 }   
 
-int homingstep;  // variable for incrementing a step count inside of a state.  Be sure to initialize this before you begin your state
 Loop() {
 
     // Checks to see if the emergency stop button has been pressed

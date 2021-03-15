@@ -81,13 +81,12 @@ typedef enum {
     START_WIPER_MOVE_IN,    
     FINISH_WIPER_MOVE_IN,
 
-    ERROR_CONDITION,           // error state.  currently there is no way to recover from this state.  This needs fixing.
+    ERROR_CONDITION,           // error currState.  currently there is no way to recover from this currState.  This needs fixing.
 
 } systemState;
 
 // -----VARIOUS GLOBAL VARIABLES-----
-bool flag_inStep = true;       // used as a flag for misstep errors; true means the actuators are in correct position
-systemState  currState;  // this holds the current system state
+systemState currState;  // this holds the current system currState
 int currPos;              // keeps track of where we are on the gantry
 
 // stepper motors
@@ -185,7 +184,7 @@ void setup(){
 
 void loop() {
 
-    // loop uses a state-machine and nonblocking motor function
+    // loop uses a currState-machine and nonblocking motor function
 
     // check for emergencies
     // currently only looking for the emergency stop
@@ -220,15 +219,22 @@ void loop() {
         case START_GANTRY_MOVE:
             ss_gantryx.setupMoveInSteps(xyposition[currPos][X]);
             ss_gantryy.setupMoveInSteps(xyposition[currPos][Y]);
-            state = FINISH_GANTRY_MOVE;
+            currState = FINISH_GANTRY_MOVE;
             break;
 
         case FINISH_GANTRY_MOVE:
             ss_gantryx.processMovement();
             ss_gantryy.processMovement();
-
-            if (ss_gantryx.motionComplete() &&  ss_gantryy.motionComplete()){
-                state =  START_PICTURE;
+            // Check to see if home switch pressed before motion complete
+            if ((!ss_gantryx.motionComplete() && (digitalRead(DI_HOME_XGANTRY) == false)) || (!ss_gantryy.motionComplete() && (digitalRead(DI_HOME_YGANTRY) == false))){
+                currState = ERROR_CONDITION;
+            }
+            if (ss_gantryx.motionComplete() && ss_gantryy.motionComplete()){
+                // the x and y gantries should complete their scanning process at (0,0), so the homing switches should be pressed
+                if ((digitalRead(DI_HOME_XGANTRY) == true) || (digitalRead(DI_HOME_YGANTRY) == true)){  // Check to see if homing switches are not pressed
+                    currState = ERROR_CONDITION;
+                }
+                else currState =  START_PICTURE;
             }
             break;    
 
@@ -238,13 +244,13 @@ void loop() {
             digitalWrite(DO_CAM_TAKEPICTURE,HIGH);
             delay(20);
             digitalWrite(DO_CAM_TAKEPICTURE,LOW);      
-            state= WAIT_FOR_PICTURE;
+            currState= WAIT_FOR_PICTURE;
             break;
 
         case WAIT_FOR_PICTURE:
             if (digitalRead(DI_CAM_GOTPICTURE)==HIGH) {
                 // record the data is needed
-                state=FINISH_PICTURE;
+                currState=FINISH_PICTURE;
             }
             break;
 
@@ -253,63 +259,71 @@ void loop() {
                 currMove++; // the next picture
                 if (currMove > NPOS) {
                     // finished all of the inspections and they all passed
-                    state = START_WIPER_MOVE;
+                    currState = START_WIPER_MOVE;
                 }
             } else {
                 // failed inspection
                 // record a failure
                 // don't run the wiper
-                state = START_TRAY_MOVE_OUT;
+                currState = START_TRAY_MOVE_OUT;
             }
             break;
 
         case START_WIPER_MOVE_OUT:
             ss_wiper.setupMoveInSteps(?);
-            state = FINISH_WIPER_MOVE_OUT;
+            currState = FINISH_WIPER_MOVE_OUT;
             break;
 
         case  FINISH_WIPER_MOVE_OUT:   
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
                 msDelay(200); // a little sloppy delaying here
-                state =  START_WIPER_MOVE_IN;
+                currState =  START_WIPER_MOVE_IN;
             }
             break; 
 
         case START_WIPER_MOVE_IN:
             ss_wiper.setupMoveInSteps(?);
-            state = FINISH_WIPER_MOVE_IN;
+            currState = FINISH_WIPER_MOVE_IN;
             break;
 
         case  FINISH_WIPER_MOVE_IN:   
             ss_wiper.processMovement();
+            if (!ss_wiper.motionComplete() && (digitalRead(DI_HOME_WIPER) == false)) currState = ERROR_CONDITION; // Check to see if home switch pressed before movement complete
             if (ss_wiper.motionComplete()){
-                state =  START_TRAY_MOVE_OUT;
+                if (digitalRead(DI_HOME_WIPER) == true){   // an extra check to see if a misstep occured
+                    currState = ERROR_CONDITION;
+                }
+                else currState =  START_TRAY_MOVE_OUT;
             }
             break;
 
         case START_TRAY_MOVE_OUT:
             ss_tray.setupMoveInSteps(?);
-            state = FINISH_TRAY_MOVE_OUT;
+            currState = FINISH_TRAY_MOVE_OUT;
             break;
 
         case  FINISH_TRAY_MOVE_OUT:   
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
-                state =  WAIT_TO_START;
+                currState =  WAIT_TO_START;
             }
             break;
 
          case START_TRAY_MOVE_IN:
                 ss_tray.setupMoveInSteps(?);
-                state = FINISH_TRAY_MOVE_IN;
+                currState = FINISH_TRAY_MOVE_IN;
            
             break;
 
         case  FINISH_TRAY_MOVE_IN:   
             ss_tray.processMovement();
+            if (!ss_tray.motionComplete() && (digitalRead(DI_HOME_TRAY) == false)) currState = ERROR_CONDITION; // Check to see if home switch pressed before movement complete
             if (ss_tray.motionComplete()){
-                state =  START_GANTRY_MOVE;
+                if (digitalRead(DI_HOME_TRAY) == true){   // Check if home switch pressed at (0,0) position
+                    currState = ERROR_CONDITION;
+                }
+                else currState =  START_GANTRY_MOVE;
             }
             break;
 
@@ -325,8 +339,9 @@ void loop() {
             LED_InProgress(1);
             LED_Failure(0);
             LED_Error(0);
-            homingstep = 1
-            currState = HOMING_CYCLE:
+            int homingstep = 1; // A variable for keeping track of which gantry is being homed
+            int flag_inStep;  // A variable for keeping track of gantry homing success
+            currState = HOMING_CYCLE;
             break;
             
         case HOMING_CYCLE:
@@ -337,7 +352,7 @@ void loop() {
 
         // The basic function is that the homing cycle will cycle to the start of loop() after every motor is homed
         // moveToHomeInMillimeters() will return false if the homing limit switch is not pressed for a set distance
-        // if flag_inStep==false when cycling then an error state will be called
+        // if flag_inStep==false when cycling then an error currState will be called
 
         //   int step static or global, otherwise they will be reinitialized everytime through the Loop() function
         //   it was renamed to homingstep.
@@ -346,19 +361,13 @@ void loop() {
             // directionTowardHome is set to -1, toward motor
             // speedInMillimetersPerSecond is set to half max speed
             // maxDistanceToMoveInMillimeters is set to 900mm, the length of gantry Y
-            if (homingstep == 1){
-                flag_inStep = ss_gantryy.moveToHomeInMillimeters(-1, 4000/17.5, 900, DI_HOME_YGANTRY);
-            }
+            if (homingstep == 1) flag_inStep = ss_gantryy.moveToHomeInMillimeters(-1, 4000/17.5, 900, DI_HOME_YGANTRY);
 
             // maxDistanceToMoveInMillimeters is set to 350mm, the length of gantry X
-            if (homingstep == 2){
-                flag_inStep == ss_gantryx.moveToHomeInMillimeters(-1, 4000/17.5, 350, DI_HOME_XGANTRY);
-            }
+            if (homingstep == 2) flag_inStep == ss_gantryx.moveToHomeInMillimeters(-1, 4000/17.5, 350, DI_HOME_XGANTRY);
 
             // maxDistanceToMoveInMillimeters is set to 500mm, the length of the wiper actuator
-            if (homingstep == 3){
-                flag_inStep = ss_wiper.moveToHomeInMillimeters(-1, 4000/17.5, 500, DI_HOME_WIPER);
-            }
+            if (homingstep == 3) flag_inStep = ss_wiper.moveToHomeInMillimeters(-1, 4000/17.5, 500, DI_HOME_WIPER);
 
             // maxDistanceToMoveInMillimeters is set to 1000mm, the length of the tray actuator
             if (homingstep == 4){
@@ -366,9 +375,7 @@ void loop() {
                 currState = WAIT_TO_START;  // Whatever case gets into ready position
             }
 
-            if (flag_inStep == false){
-                currState = ERROR_CONDITION;
-            }
+            if (flag_inStep == false) currState = ERROR_CONDITION;
 
             homingstep++;            
             break;
