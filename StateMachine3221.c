@@ -1,3 +1,5 @@
+include "SpeedyStepper.h"
+
 // digital IO pins
 // DO = digital output
 // DI = digital input
