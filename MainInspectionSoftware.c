@@ -1,4 +1,5 @@
-include "SpeedyStepper.h"
+#include "Arduino.h"
+#include "SpeedyStepper.h"
 
 // digital IO pins
 // DO = digital output
@@ -46,8 +47,6 @@ int xyposition[NPOS] = {
     {1,123}
     }
 
-
-
 // enumeration of possible states
 // these don't have to be listed in order in this list
 typedef enum {
@@ -55,6 +54,9 @@ typedef enum {
     HOMING_CYCLE,           // Homing procedure; WARNING: This is a partially blocking case
     START_HOMING_CYCLE,     // initialize variables for homing
     END_HOMING_CYCLE,       // clean up after homing
+    GANTRY_HOMING,          // An extra homing cycle for the gantries to occur at the end of each scanning cycle
+    TRAY_HOMING,            // A homing cycle to occur if the tray encounters a step count error
+    WIPER_HOMING,           // A homing cycle to occur if the wiper encounters a step count error
 
     WAIT_TO_START,          // wait for the start button, then begin the inspection
 
@@ -87,7 +89,12 @@ typedef enum {
 
 // -----VARIOUS GLOBAL VARIABLES-----
 systemState currState;  // this holds the current system currState
-int currPos;              // keeps track of where we are on the gantry
+int currPos;            // keeps track of where we are on the gantry
+// OOS Errors start as 1 so that an initial homing cycle will happen
+int flag_OOS_tray = 1;      // out of step error for tray
+int flag_OOS_wiper = 1;     // out of step error for wiper
+int flag_OOS_gantryy = 1;   // out of step error for y gantry
+int flag_OOS_gantryx = 1;   // out of step error for x gantry
 
 // stepper motors
 SpeedyStepper ss_gantryx;  
@@ -211,7 +218,7 @@ void loop() {
             // this assume the tray is out in the home position
             // wait until the start button is pressed
             if (start button is pressed) {            
-                currState=START_TRAY_MOVE_IN;
+                currState = START_TRAY_MOVE_IN;
             }
             msDelay(10);
             break;
@@ -225,17 +232,16 @@ void loop() {
         case FINISH_GANTRY_MOVE:
             ss_gantryx.processMovement();
             ss_gantryy.processMovement();
-            // Check to see if home switch pressed before motion complete
-            if ((!ss_gantryx.motionComplete() && (digitalRead(DI_HOME_XGANTRY) == false)) || (!ss_gantryy.motionComplete() && (digitalRead(DI_HOME_YGANTRY) == false))){
-                currState = ERROR_CONDITION;
-            }
-            if (ss_gantryx.motionComplete() && ss_gantryy.motionComplete()){
-                // the x and y gantries should complete their scanning process at (0,0), so the homing switches should be pressed
-                if ((digitalRead(DI_HOME_XGANTRY) == true) || (digitalRead(DI_HOME_YGANTRY) == true)){  // Check to see if homing switches are not pressed
-                    currState = ERROR_CONDITION;
-                }
-                else currState =  START_PICTURE;
-            }
+
+            if (!ss_gantryy.processMovement() && !digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;   // Check to see if home switch pressed too early
+            if (!ss_gantryx.processMovement() && !digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;   // Check to see if home switch pressed too early
+
+            if (ss_gantryx.processMovement() && ss_gantryy.processMovement()){
+                if (digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;    // Homing cycle flag in case misstep occurs
+                if (digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;    // Homing cycle flag in case misstep occurs
+                currState = START_PICTURE;
+            } 
+            
             break;    
 
         case START_PICTURE:
@@ -289,13 +295,14 @@ void loop() {
 
         case  FINISH_WIPER_MOVE_IN:   
             ss_wiper.processMovement();
-            if (!ss_wiper.motionComplete() && (digitalRead(DI_HOME_WIPER) == false)) currState = ERROR_CONDITION; // Check to see if home switch pressed before movement complete
+            
+            if (!ss_wiper.motionComplete() && !digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1; // Check to see if home switch pressed before movement complete
+            
             if (ss_wiper.motionComplete()){
-                if (digitalRead(DI_HOME_WIPER) == true){   // an extra check to see if a misstep occured
-                    currState = ERROR_CONDITION;
-                }
-                else currState =  START_TRAY_MOVE_OUT;
+                if (digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1;   // an extra check to see if a misstep occured
+                currState = START_TRAY_MOVE_OUT;
             }
+
             break;
 
         case START_TRAY_MOVE_OUT:
@@ -306,7 +313,8 @@ void loop() {
         case  FINISH_TRAY_MOVE_OUT:   
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
-                currState =  WAIT_TO_START;
+                // currState = OOS_CHECK;
+                currState = START_HOMING_CYCLE; //Homing cycle checks for misstep errors that may have occurred
             }
             break;
 
@@ -318,13 +326,14 @@ void loop() {
 
         case  FINISH_TRAY_MOVE_IN:   
             ss_tray.processMovement();
-            if (!ss_tray.motionComplete() && (digitalRead(DI_HOME_TRAY) == false)) currState = ERROR_CONDITION; // Check to see if home switch pressed before movement complete
+            
+            if (!ss_tray.motionComplete() && !digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1; // Check to see if home switch pressed before movement complete
+            
             if (ss_tray.motionComplete()){
-                if (digitalRead(DI_HOME_TRAY) == true){   // Check if home switch pressed at (0,0) position
-                    currState = ERROR_CONDITION;
-                }
-                else currState =  START_GANTRY_MOVE;
+                if (digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1;   // Check if home switch pressed at (0,0) position
+                else currState = START_GANTRY_MOVE;
             }
+
             break;
 
         default:
@@ -339,8 +348,8 @@ void loop() {
             LED_InProgress(1);
             LED_Failure(0);
             LED_Error(0);
-            int homingstep = 1; // A variable for keeping track of which gantry is being homed
-            int flag_inStep;  // A variable for keeping track of gantry homing success
+            int homingStep = 1; // A variable for keeping track of which gantry is being homed
+            int flag_homingError;  // A variable for keeping track of gantry homing success
             currState = HOMING_CYCLE;
             break;
             
@@ -352,32 +361,31 @@ void loop() {
 
         // The basic function is that the homing cycle will cycle to the start of loop() after every motor is homed
         // moveToHomeInMillimeters() will return false if the homing limit switch is not pressed for a set distance
-        // if flag_inStep==false when cycling then an error currState will be called
+        // if flag_homingError==false when cycling then an error currState will be called
 
         //   int step static or global, otherwise they will be reinitialized everytime through the Loop() function
-        //   it was renamed to homingstep.
+        //   it was renamed to homingStep.
         //   int step;   // variable to track progress of homing and escape the while loop
                 
             // directionTowardHome is set to -1, toward motor
             // speedInMillimetersPerSecond is set to half max speed
             // maxDistanceToMoveInMillimeters is set to 900mm, the length of gantry Y
-            if (homingstep == 1) flag_inStep = ss_gantryy.moveToHomeInMillimeters(-1, 4000/17.5, 900, DI_HOME_YGANTRY);
+            if ((homingStep == 1) && flag_OOS_gantryy) flag_homingError = ss_gantryy.moveToHomeInMillimeters(-1, ?, 900, DI_HOME_YGANTRY);
 
             // maxDistanceToMoveInMillimeters is set to 350mm, the length of gantry X
-            if (homingstep == 2) flag_inStep == ss_gantryx.moveToHomeInMillimeters(-1, 4000/17.5, 350, DI_HOME_XGANTRY);
+            if ((homingStep == 2) && flag_OOS_gantryx) flag_homingError == ss_gantryx.moveToHomeInMillimeters(-1, ?, 350, DI_HOME_XGANTRY);
 
             // maxDistanceToMoveInMillimeters is set to 500mm, the length of the wiper actuator
-            if (homingstep == 3) flag_inStep = ss_wiper.moveToHomeInMillimeters(-1, 4000/17.5, 500, DI_HOME_WIPER);
+            if ((homingStep == 3) && flag_OOS_wiper) flag_homingError = ss_wiper.moveToHomeInMillimeters(-1, ?, 500, DI_HOME_WIPER);
 
             // maxDistanceToMoveInMillimeters is set to 1000mm, the length of the tray actuator
-            if (homingstep == 4){
-                flag_inStep = ss_tray.moveToHomeInMillimeters(-1, 4000/17.5, 1000, DI_HOME_TRAY);
-                currState = WAIT_TO_START;  // Whatever case gets into ready position
-            }
+            if ((homingStep == 4) && flag_OOS_tray) flag_homingError = ss_tray.moveToHomeInMillimeters(-1, ?, 1000, DI_HOME_TRAY);
+                
+            if (homingStep == 5) currState = WAIT_TO_START;  // Whatever case gets into ready position
 
-            if (flag_inStep == false) currState = ERROR_CONDITION;
+            if (flag_homingError == false) currState = ERROR_CONDITION;
 
-            homingstep++;            
+            homingStep++;            
             break;
             
         case END_HOMING_CYCLE:
@@ -388,6 +396,26 @@ void loop() {
             LED_Error(0);
             currState = WAIT_TO_START;
             break;
+
+        // case OOS_CHECK: // OOS = Out Of Step
+        //     /*
+        //     THIS case is designed to check if a misstep has occurred in any of the actuators during normal operations.
+        //     Homing functions will be called if any of the OOS flags are made positive during normal operations.
+            
+        //     directionTowardHome = -1 (toward motor)
+        //     speedInMillimetersPerSecond = (regular actuator speed) (look at initializeMotorSpeeds())
+        //     maxDistanceToMoveInMillimeters = 10cm (a short distance as we should already be at position)
+        //     */
+            
+        //     if (flag_OOS_gantryy) flag_OOS_gantryy = !ss_gantryy.moveToHomeInMillimeters(-1, ?, 100, DI_HOME_YGANTRY);  // flag equals opposite of success state of homing function
+        //     if (flag_OOS_gantryx) flag_OOS_gantryx = !ss_gantryx.moveToHomeInMillimeters(-1, ?, 100, DI_HOME_XGANTRY);  // flag equals opposite of success state of homing function
+        //     if (flag_OOS_tray) flag_OOS_tray = !ss_tray.moveToHomeInMillimeters(-1, ?, 100, DI_HOME_TRAY);              // flag equals opposite of success state of homing function
+        //     if (flag_OOS_wiper) flag_OOS_wiper = !ss_wiper.moveToHomeInMillimeters(-1, ?, 100, DI_HOME_WIPER);          // flag equals opposite of success state of homing function    
+            
+        //     if (flag_OOS_wiper || flag_OOS_tray || flag_OOS_gantryy || flag_OOS_gantryx) currState = ERROR_CONDITION;   // if any flag is still positive then call an error
+        //     else currState = WAIT_TO_START;
+
+        //     break;
 
 
     }

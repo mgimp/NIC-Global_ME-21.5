@@ -1,10 +1,37 @@
-Drop flag and instead just change the case directly. - DONE
+Drop flag and instead just change the case directly. 
+    - DONE
     
-Make sure to check if the home switch is pressed at (0,0) - DONE
-Make sure to check if switch pressed before (0,0) - DONE
+Make sure to check if the home switch is pressed at (0,0) 
+    - DONE
+Make sure to check if switch pressed before (0,0) 
+    - DONE
 
-Implement code that doesn't call an error for misstep until the cycle has completed. - ABANDONED
+Implement code that doesn't call an error for misstep until the cycle has completed. 
+    - ABANDONED
 
-Move my code to MainInspectionSoftware.c - DONE
+Move my code to MainInspectionSoftware.c 
+    - DONE
 
-Should I worry about small differences between motionComplete() and checking the digitalRead(pin)?
+Should I worry about small differences between motionComplete() and checking the digitalRead(pin)? 
+    - NO, because processMovement should be accurate to a single step
+
+Stuff after talking with Greg:
+    We can assume that the homing function is accurate to a single step. - Is this true? 
+        - PROBABLY, but we couldn't know without testing
+
+    name.processMovement() operates by repeatedly cycing through a single step until the destination is reached 
+        - TRUE
+
+    Call a homing function on gantry actuators after each scanning cycle (it should be quick because the gantry is already at position)
+        - DONE
+        Will a homing function complete immediately if the homing switch is already pressed when the homing function is called? 
+            - NO, but it should be fast
+
+    Tray and wiper actuators could have a separate, less critical error that occurs when out of step but isn't resolved 
+    unless the user intervenes or after the basic cycle has ended.
+        Should I just home the tray and wiper actuators after each cycle as well? Or maybe I can just auto home the individual 
+        actuator if it encounters an error, and for those homing cases an error is possible.
+
+        I made a OSS case to check to see if a flag went up for any of the actuators. At this point, I might as well just write
+        the general homing function so that if runs after each cycle, but will only home if a flag has been raised. I can just define 
+        the flags as positive so that a homing cycle occurs whenever the ardino is reset, which we would want anyway.
