@@ -25,26 +25,37 @@
 
 #define DO_RUNNING  ?   // light is on if the process is running and flashing when there is an error.
 
+// Lights
+#define DO_Ready ?      //Green LED on for ready status
+#define DO_WIP ?        //Yellow LED blinking for cycle in progress
+#define DO_Part_Failure ?  //RED LED Blinking for part failure
+#define DO_System_Failure ? //RED LED Steady for system failure
+    
 // camera
 #define DO_CAM_TAKEPICTURE ?
 #define DI_CAM_GOTPICTURE ?
 #define DI_CAM_FAILED ?
+#define DI_CAM_MISPRINT ?
 
-
-#define NPOS 4   // number of points the gantry must move to capture the pictures
+    
+#define NPOS 8   // number of points the gantry must move to capture the pictures
 #define Y 0    // the long gantry direction
 #define X 1    // the short gantry direction
-
 
 // Global Variables
 
 
 // xy position to move to.  These are in steps from the home position
 int xyposition[NPOS] = {
-    {10,13},
-    {34,23},
-    {34,22},
-    {1,123}
+    {262.5,112.5},               // First position
+    {262.5,337.5},               // Second position
+    {262.5,562.5},               // Third posistion
+    {262.5,787.5},               // Fourth position end of y axis and end of the x axis
+    {87.5, 787.5},               // Fifth position retracts the x axis
+    {87.5, 562.5},               // Sixth position
+    {87.5, 337.5},               // Seventh position 
+    {87.5, 112.5},               // Eighth position
+    {0, 0}
     }
 
 // enumeration of possible states
@@ -83,7 +94,9 @@ typedef enum {
     START_WIPER_MOVE_IN,    
     FINISH_WIPER_MOVE_IN,
 
-    ERROR_CONDITION,           // error currState.  currently there is no way to recover from this currState.  This needs fixing.
+    PART_COMPLIANCE_FAILURE,
+    
+    ERROR_CONDITION,           // error state.  currently there is no way to recover from this state.  This needs fixing.
 
 } systemState;
 
@@ -107,11 +120,16 @@ int initializeMotorSpeeds(){
     // initialize the motor speeds and accelerations
     // these are the values used while the machine is running normally
 
-    ss_gantryx.setSpeedInStepsPerSecond(?);
-    ss_gantryx.setAccelerationInStepsPerSecondPerSecond(?);
+    ss_gantryx.setStepsPerMillimeter(17.5 * 2);
+    ss_gantryy.setStepsPerMillimeter(17.5 * 2);
+    ss_wiper.setStepsPerMillimeter(17.5 * 2);
+    ss_tray.setStepsPerMillimeter(17.5 * 2);
+    
+    ss_gantryx.setSpeedInStepsPerSecond(8000);
+    ss_gantryx.setAccelerationInStepsPerSecondPerSecond(9500);
 
-    ss_gantryy.setSpeedInStepsPerSecond(?);
-    ss_gantryy.setAccelerationInStepsPerSecondPerSecond(?);
+    ss_gantryy.setSpeedInStepsPerSecond(8000);
+    ss_gantryy.setAccelerationInStepsPerSecondPerSecond(9500);
 
     ss_wiper.setSpeedInStepsPerSecond(?);
     ss_wiper.setAccelerationInStepsPerSecondPerSecond(?);
@@ -262,22 +280,30 @@ void loop() {
 
         case FINISH_PICTURE:
             if (digitalRead(DI_CAM_FAILED)==LOW) {
-                currMove++; // the next picture
-                if (currMove > NPOS) {
+                currPos++; // the next picture
+                if (currPos > NPOS) && digitalRead(DI_CAM_MISPRINT) ==LOW) {
                     // finished all of the inspections and they all passed
                     currState = START_WIPER_MOVE;
                 }
             } else {
-                // failed inspection
-                // record a failure
-                // don't run the wiper
-                currState = START_TRAY_MOVE_OUT;
+
+                if (digitalRead(DI_CAM_MISPRINT)==HIGH){
+                    state = PART_COMPLIANCE_FAILURE // failed inspection
+                // record a failure (? within compliance case)
+               }
             }
             break;
 
+        case PART_COMPLIANCE_FAILURE:
+             digitalWrite(DO_Part_Failure == HIGH);
+             state = START_TRAY_MOVE_OUT;
+             break;
+     
+                         
         case START_WIPER_MOVE_OUT:
-            ss_wiper.setupMoveInSteps(?);
-            currState = FINISH_WIPER_MOVE_OUT;
+
+            ss_wiper.setupMoveInMilimeter(480);
+            state = FINISH_WIPER_MOVE_OUT;
             break;
 
         case  FINISH_WIPER_MOVE_OUT:   
@@ -289,8 +315,8 @@ void loop() {
             break; 
 
         case START_WIPER_MOVE_IN:
-            ss_wiper.setupMoveInSteps(?);
-            currState = FINISH_WIPER_MOVE_IN;
+            ss_wiper.setupMoveInMilimeter(-480);
+            state = FINISH_WIPER_MOVE_IN;
             break;
 
         case  FINISH_WIPER_MOVE_IN:   
@@ -306,8 +332,8 @@ void loop() {
             break;
 
         case START_TRAY_MOVE_OUT:
-            ss_tray.setupMoveInSteps(?);
-            currState = FINISH_TRAY_MOVE_OUT;
+            ss_tray.setupMoveInMilimeter(980);
+            state = FINISH_TRAY_MOVE_OUT;
             break;
 
         case  FINISH_TRAY_MOVE_OUT:   
@@ -319,9 +345,8 @@ void loop() {
             break;
 
          case START_TRAY_MOVE_IN:
-                ss_tray.setupMoveInSteps(?);
-                currState = FINISH_TRAY_MOVE_IN;
-           
+                ss_tray.setupMoveInMilimeter(-980);
+                state = FINISH_TRAY_MOVE_IN;   
             break;
 
         case  FINISH_TRAY_MOVE_IN:   
