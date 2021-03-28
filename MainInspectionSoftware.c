@@ -279,8 +279,8 @@ void loop() {
         case WAIT_TO_START:
             // this case assumes the tray is out in the home position
             // wait until the start button is pressed
-            if (start button is pressed) {    
-                digitalWrite(DO_WIP,LOW);               // Turn off WIP light
+            if (digitalRead(DI_START)==HIGH) {    
+                digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
                 digitalWrite(DO_Ready,LOW);             // Turn off Ready light
                 digitalWrite(DO_Part_Failure,LOW);      // Turn off Part Failure light
                 digitalWrite(DO_System_Failure,LOW);    // Turn off System Failure light
@@ -330,10 +330,13 @@ void loop() {
                 currPos++; // the next picture
                 if (currPos > NPOS) && digitalRead(DI_CAM_MISPRINT) ==LOW) {
                     // finished all of the inspections and they all passed
+                    digitalWrite(DO_WIP,LOW);
                     currState = START_WIPER_MOVE_OUT;
+
                 }
             } else {
                 if (digitalRead(DI_CAM_MISPRINT)==HIGH){
+                    digitalWrite(DO_WIP,LOW);
                     currState = PART_COMPLIANCE_FAILURE; // failed inspection
                 // record a failure (? within compliance case)
                 }
@@ -379,7 +382,8 @@ void loop() {
             state = FINISH_TRAY_MOVE_OUT;
             break;
 
-        case FINISH_TRAY_MOVE_OUT:   
+        case  FINISH_TRAY_MOVE_OUT:
+            digitalWrite(DO_Part_Failure,LOW);
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
                 // currState = OOS_CHECK;
