@@ -233,9 +233,12 @@ void loop() {
 
         // -----SCANNING CYCLE CASES-----
         case WAIT_TO_START:
+            digitalWrite(DO_Ready == HIGH);
             // this assume the tray is out in the home position
             // wait until the start button is pressed
-            if (start button is pressed) {            
+            if (DI_START == HIGH) {
+                digitalWrite(DO_Ready == LOW);
+                digitalWrite(DO_WIP == HIGH);
                 currState = START_TRAY_MOVE_IN;
             }
             msDelay(10);
@@ -283,12 +286,14 @@ void loop() {
                 currPos++; // the next picture
                 if (currPos > NPOS) && digitalRead(DI_CAM_MISPRINT) ==LOW) {
                     // finished all of the inspections and they all passed
+                    digitalRead(DO_WIP)==LOW);
                     currState = START_WIPER_MOVE;
                 }
             } else {
 
                 if (digitalRead(DI_CAM_MISPRINT)==HIGH){
-                    state = PART_COMPLIANCE_FAILURE // failed inspection
+                    digitalRead(DO_WIP)==LOW);
+                    state = PART_COMPLIANCE_FAILURE; // failed inspection
                 // record a failure (? within compliance case)
                }
             }
@@ -301,7 +306,6 @@ void loop() {
      
                          
         case START_WIPER_MOVE_OUT:
-
             ss_wiper.setupMoveInMilimeter(480);
             state = FINISH_WIPER_MOVE_OUT;
             break;
@@ -336,7 +340,8 @@ void loop() {
             state = FINISH_TRAY_MOVE_OUT;
             break;
 
-        case  FINISH_TRAY_MOVE_OUT:   
+        case  FINISH_TRAY_MOVE_OUT:
+            digitalWrite(DO_Part_Failure == LOW);
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
                 // currState = OOS_CHECK;
