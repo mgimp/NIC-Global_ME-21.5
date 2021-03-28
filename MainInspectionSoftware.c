@@ -63,7 +63,10 @@ typedef enum  {
    
     HOMING_CYCLE,           // Homing procedure; WARNING: This is a partially blocking case
     START_HOMING_CYCLE,     // initialize variables for homing
-    END_HOMING_CYCLE,       // clean up after homing
+    FINISH_HOMING_CYCLE,       // clean up after homing
+
+    START_TRAY_MOVE_OUT_WTS     // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
+    FINISH_TRAY_MOVE_OUT_WTS    // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
 
     WAIT_TO_START,          // wait for the start button, then begin the inspection
 
@@ -223,10 +226,6 @@ void loop() {
         // -----HOMING CYCLE CASES----- //
         case START_HOMING_CYCLE:
             digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
-            digitalWrite(DO_Ready,LOW);             // Turn off Ready light
-            digitalWrite(DO_Part_Failure,LOW);      // Turn off Part Failure light
-            digitalWrite(DO_System_Failure,LOW);    // Turn off System Failure light
-            
             int homingStep = 1;         // A variable for keeping track of which gantry is being homed
             int flag_homingError;       // A variable for keeping track of gantry homing success
             currState = HOMING_CYCLE;
@@ -259,34 +258,57 @@ void loop() {
             // maxDistanceToMoveInMillimeters is set to 1000mm, the length of the tray actuator
             if ((homingStep == 4) && flag_OOS_tray) flag_homingError = ss_tray.moveToHomeInMillimeters(-1, ?, 1000, DI_HOME_TRAY);
                 
-            if (homingStep == 5) currState = END_HOMING_CYCLE;
+            if (homingStep == 5) currState = FINISH_HOMING_CYCLE;
 
             if (flag_homingError == false) currState = ERROR_CONDITION;
 
             homingStep++;            
             break;
             
-        case END_HOMING_CYCLE:
-            // LED STUFF
+        case FINISH_HOMING_CYCLE:
             digitalWrite(DO_WIP,LOW);               // Turn off WIP light
-            digitalWrite(DO_Ready,LOW);             // Turn off Ready light
-            digitalWrite(DO_Part_Failure,LOW);      // Turn off Part Failure light
-            digitalWrite(DO_System_Failure,LOW);    // Turn off System Failure light
-            currState = START_TRAY_MOVE_OUT;        // WAIT_TO_START assumes tray is out
+            currState = START_TRAY_MOVE_OUT_WTS;    // WAIT_TO_START assumes tray is out
             break;
 
-        // -----SCANNING CYCLE CASES----- //
+        case START_TRAY_MOVE_OUT_WTS:               // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
+            digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
+            ss_tray.setupMoveInMilimeter(980);
+            state = FINISH_TRAY_MOVE_OUT_WTS;
+            break;
+        
+        case FINISH_TRAY_MOVE_OUT_WTS:              // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
+            ss_wiper.processMovement();
+            if (ss_wiper.motionComplete()){
+                digitalWrite(DO_WIP,LOW);           // Turn on WIP light
+                currState = WAIT_TO_START; 
+            }            
+            break;
+
         case WAIT_TO_START:
             // this case assumes the tray is out in the home position
             // wait until the start button is pressed
-            if (digitalRead(DI_START)==HIGH) {    
-                digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
-                digitalWrite(DO_Ready,LOW);             // Turn off Ready light
+            if (digitalRead(DI_START)==HIGH){    
                 digitalWrite(DO_Part_Failure,LOW);      // Turn off Part Failure light
-                digitalWrite(DO_System_Failure,LOW);    // Turn off System Failure light
+                digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
                 currState = START_TRAY_MOVE_IN;
             }
             msDelay(10);
+            break;
+
+        case START_TRAY_MOVE_IN:
+            ss_tray.setupMoveInMilimeter(0);
+            state = FINISH_TRAY_MOVE_IN;   
+            break;
+
+        case FINISH_TRAY_MOVE_IN:   
+            ss_tray.processMovement();
+
+            if (!ss_tray.motionComplete() && !digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1; // Check to see if home switch pressed before movement complete
+            
+            if (ss_tray.motionComplete()){
+                if (digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1;   // Check if home switch pressed at (0,0) position
+                else currState = START_GANTRY_MOVE;
+            }
             break;
 
         case START_GANTRY_MOVE:
@@ -311,7 +333,6 @@ void loop() {
 
         case START_PICTURE:
             // code to take a picture at position   currMove
-          
             digitalWrite(DO_CAM_TAKEPICTURE,HIGH);
             delay(20);
             digitalWrite(DO_CAM_TAKEPICTURE,LOW);      
@@ -344,11 +365,12 @@ void loop() {
             break;
 
         case PART_COMPLIANCE_FAILURE:
-             digitalWrite(DO_Part_Failure == HIGH);
+             digitalWrite(DO_Part_Failure,HIGH);
              state = START_TRAY_MOVE_OUT;
              break;
                          
         case START_WIPER_MOVE_OUT:
+            digitalWrite(DO_WIP,HIGH);               // Turn on WIP light
             ss_wiper.setupMoveInMilimeter(480);
             state = FINISH_WIPER_MOVE_OUT;
             break;
@@ -356,13 +378,15 @@ void loop() {
         case FINISH_WIPER_MOVE_OUT:   
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
+                digitalWrite(DO_WIP,LOW);               // Turn off WIP light
                 msDelay(200); // a little sloppy delaying here
-                currState =  START_WIPER_MOVE_IN;
+                currState = START_WIPER_MOVE_IN;
             }
             break; 
 
         case START_WIPER_MOVE_IN:
-            ss_wiper.setupMoveInMilimeter(-480);
+            digitalWrite(DO_WIP,HIGH);               // Turn on WIP light
+            ss_wiper.setupMoveInMilimeter(0);
             state = FINISH_WIPER_MOVE_IN;
             break;
 
@@ -373,39 +397,24 @@ void loop() {
             
             if (ss_wiper.motionComplete()){
                 if (digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1;   // an extra check to see if a misstep occured
+                digitalWrite(DO_WIP,LOW);               // Turn off WIP light
                 currState = START_TRAY_MOVE_OUT;
             }
             break;
 
         case START_TRAY_MOVE_OUT:
+            digitalWrite(DO_WIP,HIGH);               // Turn on WIP light
             ss_tray.setupMoveInMilimeter(980);
             state = FINISH_TRAY_MOVE_OUT;
             break;
 
-        case  FINISH_TRAY_MOVE_OUT:
+        case FINISH_TRAY_MOVE_OUT:
             digitalWrite(DO_Part_Failure,LOW);
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
-                // currState = OOS_CHECK;
+                digitalWrite(DO_WIP,LOW);               // Turn off WIP light
                 currState = START_HOMING_CYCLE; //Homing cycle checks for misstep errors that may have occurred
             }
-            break;
-
-         case START_TRAY_MOVE_IN:
-                ss_tray.setupMoveInMilimeter(-980);
-                state = FINISH_TRAY_MOVE_IN;   
-            break;
-
-        case  FINISH_TRAY_MOVE_IN:   
-            ss_tray.processMovement();
-            
-            if (!ss_tray.motionComplete() && !digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1; // Check to see if home switch pressed before movement complete
-            
-            if (ss_tray.motionComplete()){
-                if (digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1;   // Check if home switch pressed at (0,0) position
-                else currState = START_GANTRY_MOVE;
-            }
-
             break;
 
         default:
