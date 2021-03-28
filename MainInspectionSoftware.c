@@ -20,12 +20,11 @@
 #define DI_HOME_WIPER  ?
 #define DI_HOME_TRAY  ?   // the home should be on the inside of the inspection chamber
 
+// button inputs
 #define DI_EMERGENCYSTOP ?
 #define DI_START ?   // a momentary switch to start the inspection
 
-#define DO_RUNNING  ?   // light is on if the process is running and flashing when there is an error.
-
-// Lights
+// LED inputs
 #define DO_Ready ?      //Green LED on for ready status
 #define DO_WIP ?        //Yellow LED blinking for cycle in progress
 #define DO_Part_Failure ?  //RED LED Blinking for part failure
@@ -60,14 +59,11 @@ int xyposition[NPOS] = {
 
 // enumeration of possible states
 // these don't have to be listed in order in this list
-typedef enum {
+typedef enum  {
    
     HOMING_CYCLE,           // Homing procedure; WARNING: This is a partially blocking case
     START_HOMING_CYCLE,     // initialize variables for homing
     END_HOMING_CYCLE,       // clean up after homing
-    GANTRY_HOMING,          // An extra homing cycle for the gantries to occur at the end of each scanning cycle
-    TRAY_HOMING,            // A homing cycle to occur if the tray encounters a step count error
-    WIPER_HOMING,           // A homing cycle to occur if the wiper encounters a step count error
 
     WAIT_TO_START,          // wait for the start button, then begin the inspection
 
@@ -103,7 +99,7 @@ typedef enum {
 // -----VARIOUS GLOBAL VARIABLES-----
 systemState currState;  // this holds the current system currState
 int currPos;            // keeps track of where we are on the gantry
-// OOS Errors start as 1 so that an initial homing cycle will happen
+// !!!OOS Errors start as 1 so that an initial homing cycle will happen!!!
 int flag_OOS_tray = 1;      // out of step error for tray
 int flag_OOS_wiper = 1;     // out of step error for wiper
 int flag_OOS_gantryy = 1;   // out of step error for y gantry
@@ -114,7 +110,6 @@ SpeedyStepper ss_gantryx;
 SpeedyStepper ss_gantryy;   // long travel direction
 SpeedyStepper ss_wiper;
 SpeedyStepper ss_tray;
-
 
 int initializeMotorSpeeds(){
     // initialize the motor speeds and accelerations
@@ -139,46 +134,14 @@ int initializeMotorSpeeds(){
     
 }
 
-int homeMotor(SpeedyStepper* motor, int homeDI){
-    // motor = pointer to speedystepper structure
-    // homeDI = the digital pin for the home switch
-
-    motor->setupStop();  // step in case something is running
-
-    motor->setSpeedInStepsPerSecond(?); // something slow for homing
-    motor->setAccelerationInStepsPerSecondPerSecond(?); // something slow for homing
-
-    motor->setupRelativeMoveInSteps(?)  // something big that will force it to always move in one direction
-
-    // homeIO can be the input pin of the home switch
-    // switch is currently high = not touching
-    while (digitalRead(homeDI)==HIGH){
-        motor->processMovement();
-    }
-    
-    motor->setupStop();
-
-    // make this the new zero
-    motor->setCurrentPositionInSteps(0);
-
-    if (the stop button is pressed){
-        return 1; // stopped because of the stop button.  This is an error condition
-    }
-
-    return 0; // no errors
-
-}
-
 void setup(){
-    // setup all of the digital IO
-
+    // -----SETUP ALL DIGITAL I/O-----//
    
     // Assign IO pins used for Step and Direction
     ss_gantryx.connectToPins(DO_XGANTRY_PUL, DO_XGANTRY_DIR);
     ss_gantryy.connectToPins(DO_YGANTRY_PUL, DO_YGANTRY_DIR);
     ss_wiper.connectToPins(DO_WIPER_PUL, DO_WIPER_DIR);
     ss_tray.connectToPins(DO_TRAY_PUL, DO_TRAY_DIR);
-
 
     // assign the homing digital inputs
     pinMode(DI_HOME_XGANTRY,INPUT);
@@ -190,15 +153,15 @@ void setup(){
     pinMode(DI_EMERGENCYSTOP,INPUT);
     pinMode(DI_START,INPUT)
 
-    // assign the inprogress LED
-    pinMode(DO_RUNNING,OUTPUT);
-
+    // assign the LED digital outputs
+    pinMode(DO_Part_Failure,OUTPUT);
+    pinMode(DO_WIP,OUTPUT);
+    pinMODE(DO_System_Failure,OUTPUT);
+    pinMODE(DO_Ready,OUTPUT);
   
     // setup the camera IO
     // ?
  
-
-
     // do any other camera initialization
 
      // initialize the currState;
@@ -207,20 +170,40 @@ void setup(){
 
 }
 
+// -----LOOP STRUCTURE----- //
+// Loop structure uses a State-machine and non-blocking motor functions whenever possible.
+// Cases should return to the beginning of loop() in between instructions to maintain the non-blocking quality.
+// 'currState' is the variable that controls the working case.
+// Cases contain internal parameters to determine which cases succeed each other.
 void loop() {
 
-    // loop uses a currState-machine and nonblocking motor function
+    // -----EMERGENCY STOP BUTTON----- //
+    // Checks to see if stop button has been pressed before continuing to the current case.
+    // Switches to ERROR_CONDITION case if button pressed.
 
-    // check for emergencies
-    // currently only looking for the emergency stop
-    // but could check other things here
+    // Button input depends on non-blocking structure of the program.
+    // Each case needs to repeatedly return to the top of loop() in order to check if the button has been pressed.
+    // The stop button will not work in blocking cases
     if (digitalRead(DI_EMERGENCYSTOP)) {
         // do something
         currState = ERROR_CONDITION;
     }
- 
+    
+    // -----STATE MACHINE----- //
+    // State machine calls whichever instructions are determined by variable 'currState'.
+    // Cases will not change without specific instructions.
+    // The order of cases as defined in the switch does not affect the order that they are called.
+    // Most cases contain instructions to select the next case.
 
+    // The non-blocking case structure needs each case to repeatedly exit and re-enter the switch in order to detect errors and certain inputs.
+    // Blocking cases must include conditions that would ordinarily be detected at the top of loop().
     switch (currState){
+        // -----ERROR_CONDITION----- //
+        // This case is the general issue state that is called in the following situations:
+        // 1. Any internal error (as determined within individual cases)
+        // 2. If the stop button is pressed.
+
+        // ERROR_CONDITION is subject to change at this time -28MAR2021
         case ERROR_CONDITION:
             // flash the LED until
             digitalWrite(DO_RUNNING,!digitalRead(DO_RUNNING);
@@ -229,9 +212,9 @@ void loop() {
             // right now there is no way of exiting an error condition
             // this is something to be decided
             // for examlple could have the emergency stop button be latching and you need to undo it and then press start?
-        break;
+            break;
 
-        // -----SCANNING CYCLE CASES-----
+        // -----SCANNING CYCLE CASES----- //
         case WAIT_TO_START:
             // this assume the tray is out in the home position
             // wait until the start button is pressed
@@ -259,7 +242,6 @@ void loop() {
                 if (digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;    // Homing cycle flag in case misstep occurs
                 currState = START_PICTURE;
             } 
-            
             break;    
 
         case START_PICTURE:
@@ -283,7 +265,7 @@ void loop() {
                 currPos++; // the next picture
                 if (currPos > NPOS) && digitalRead(DI_CAM_MISPRINT) ==LOW) {
                     // finished all of the inspections and they all passed
-                    currState = START_WIPER_MOVE;
+                    currState = START_WIPER_MOVE_OUT;
                 }
             } else {
 
@@ -406,7 +388,7 @@ void loop() {
             // maxDistanceToMoveInMillimeters is set to 1000mm, the length of the tray actuator
             if ((homingStep == 4) && flag_OOS_tray) flag_homingError = ss_tray.moveToHomeInMillimeters(-1, ?, 1000, DI_HOME_TRAY);
                 
-            if (homingStep == 5) currState = WAIT_TO_START;  // Whatever case gets into ready position
+            if (homingStep == 5) currState = END_HOMING_CYCLE;  // Whatever case gets into ready position
 
             if (flag_homingError == false) currState = ERROR_CONDITION;
 
@@ -421,27 +403,6 @@ void loop() {
             LED_Error(0);
             currState = WAIT_TO_START;
             break;
-
-        // case OOS_CHECK: // OOS = Out Of Step
-        //     /*
-        //     THIS case is designed to check if a misstep has occurred in any of the actuators during normal operations.
-        //     Homing functions will be called if any of the OOS flags are made positive during normal operations.
-            
-        //     directionTowardHome = -1 (toward motor)
-        //     speedInMillimetersPerSecond = (regular actuator speed) (look at initializeMotorSpeeds())
-        //     maxDistanceToMoveInMillimeters = 10cm (a short distance as we should already be at position)
-        //     */
-            
-        //     if (flag_OOS_gantryy) flag_OOS_gantryy = !ss_gantryy.moveToHomeInMillimeters(-1, ?, 100, DI_HOME_YGANTRY);  // flag equals opposite of success state of homing function
-        //     if (flag_OOS_gantryx) flag_OOS_gantryx = !ss_gantryx.moveToHomeInMillimeters(-1, ?, 100, DI_HOME_XGANTRY);  // flag equals opposite of success state of homing function
-        //     if (flag_OOS_tray) flag_OOS_tray = !ss_tray.moveToHomeInMillimeters(-1, ?, 100, DI_HOME_TRAY);              // flag equals opposite of success state of homing function
-        //     if (flag_OOS_wiper) flag_OOS_wiper = !ss_wiper.moveToHomeInMillimeters(-1, ?, 100, DI_HOME_WIPER);          // flag equals opposite of success state of homing function    
-            
-        //     if (flag_OOS_wiper || flag_OOS_tray || flag_OOS_gantryy || flag_OOS_gantryx) currState = ERROR_CONDITION;   // if any flag is still positive then call an error
-        //     else currState = WAIT_TO_START;
-
-        //     break;
-
 
     }
 
