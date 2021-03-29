@@ -287,7 +287,9 @@ void loop() {
         case WAIT_TO_START:
             // this case assumes the tray is out in the home position
             // wait until the start button is pressed
-            if (digitalRead(DI_START)==HIGH){    
+            digitalWrite(DO_Ready,HIGH);
+            if (digitalRead(DI_START)==HIGH){
+                digitalWrite(DO_Ready,LOW);    
                 digitalWrite(DO_Part_Failure,LOW);      // Turn off Part Failure light
                 digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
                 currState = START_TRAY_MOVE_IN;
@@ -365,7 +367,11 @@ void loop() {
             break;
 
         case PART_COMPLIANCE_FAILURE:
-             digitalWrite(DO_Part_Failure,HIGH);
+            // -----BAD PART----- //
+            // This is the only case made specially for a part being unsatisfactory.
+            // The basic system behavior has the part under observation returned to the operator when it fails inspection.
+            // It's possible that
+             digitalWrite(DO_Part_Failure,HIGH);    // This LED cleared when the start button is pressed in the WAIT_TO_START case
              state = START_TRAY_MOVE_OUT;
              break;
                          
@@ -378,32 +384,28 @@ void loop() {
         case FINISH_WIPER_MOVE_OUT:   
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
-                digitalWrite(DO_WIP,LOW);               // Turn off WIP light
                 msDelay(200); // a little sloppy delaying here
                 currState = START_WIPER_MOVE_IN;
             }
             break; 
 
         case START_WIPER_MOVE_IN:
-            digitalWrite(DO_WIP,HIGH);               // Turn on WIP light
             ss_wiper.setupMoveInMilimeter(0);
             state = FINISH_WIPER_MOVE_IN;
             break;
 
-        case  FINISH_WIPER_MOVE_IN:   
+        case FINISH_WIPER_MOVE_IN:   
             ss_wiper.processMovement();
             
             if (!ss_wiper.motionComplete() && !digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1; // Check to see if home switch pressed before movement complete
             
             if (ss_wiper.motionComplete()){
                 if (digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1;   // an extra check to see if a misstep occured
-                digitalWrite(DO_WIP,LOW);               // Turn off WIP light
                 currState = START_TRAY_MOVE_OUT;
             }
             break;
 
         case START_TRAY_MOVE_OUT:
-            digitalWrite(DO_WIP,HIGH);               // Turn on WIP light
             ss_tray.setupMoveInMilimeter(980);
             state = FINISH_TRAY_MOVE_OUT;
             break;
@@ -417,8 +419,7 @@ void loop() {
             }
             break;
 
-        default:
-            // error so do what every needs to be done
+        default:    // This should never be called
             delay(20);
             break;
 
