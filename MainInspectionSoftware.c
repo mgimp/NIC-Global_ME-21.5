@@ -1,6 +1,13 @@
 #include "Arduino.h"
 #include "SpeedyStepper.h"
 
+// the home swith logic is confusing because its not clear from the code
+// if digitalRead(DI_HOME_YGANTRY) means the switch is pressed or not pressed
+// suggest using
+// #define HOMESWITCH_PRESSED LOW  // this define can then be changed depending on wiring
+// #define HOMESWITCH_RELEASED HIGH
+// if (digitalRead(DI_HOME_YGANTRY) == HOMESWITCH_PRESSED)
+
 // digital IO pins
 // DO = digital output
 // DI = digital input
@@ -102,6 +109,11 @@ typedef enum  {
 // -----VARIOUS GLOBAL VARIABLES-----
 systemState currState;  // this holds the current system currState
 int currPos;            // keeps track of where we are on the gantry
+
+// added as global for consistency
+int homingStep;         // A variable for keeping track of which gantry is being homed
+int flag_homingError;       // A variable for keeping track of gantry homing success
+
 // !!!OOS Errors start as 1 so that an initial homing cycle will happen!!!
 int flag_OOS_tray = 1;      // out of step error for tray
 int flag_OOS_wiper = 1;     // out of step error for wiper
@@ -175,7 +187,7 @@ void setup(){
 
      // initialize the currState;
     currState = START_HOMING_CYCLE;
-    currMove = 0;
+    currPos = 0;  // Renamed to match code
 
 }
 
@@ -226,8 +238,8 @@ void loop() {
         // -----HOMING CYCLE CASES----- //
         case START_HOMING_CYCLE:
             digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
-            int homingStep = 1;         // A variable for keeping track of which gantry is being homed
-            int flag_homingError;       // A variable for keeping track of gantry homing success
+            homingStep = 1;         // A variable for keeping track of which gantry is being homed
+            flag_homingError=0;       // A variable for keeping track of gantry homing success
             currState = HOMING_CYCLE;
             break;
             
@@ -268,6 +280,13 @@ void loop() {
         case FINISH_HOMING_CYCLE:
             digitalWrite(DO_WIP,LOW);               // Turn off WIP light
             currState = START_TRAY_MOVE_OUT_WTS;    // WAIT_TO_START assumes tray is out
+                         
+            //reset OOS flags
+            flag_OOS_gantryy=0;
+            flag_OOS_gantryx=0;
+            flag_OOS_wiper=0;
+            flag_OOS_tray=0; 
+                         
             break;
 
         case START_TRAY_MOVE_OUT_WTS:               // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
@@ -299,17 +318,37 @@ void loop() {
 
         case START_TRAY_MOVE_IN:
             ss_tray.setupMoveInMilimeter(0);
+                         
+            // also move the gantry to position 0,0. This lets you check the homing
+             ss_gantryx.setupMoveInSteps(0,0);
+            ss_gantryy.setupMoveInSteps(0,0);
+                         
             state = FINISH_TRAY_MOVE_IN;   
             break;
 
         case FINISH_TRAY_MOVE_IN:   
             ss_tray.processMovement();
+               
+           // move the gantry to 0,0              
+           ss_gantryx.processMovement();
+           ss_gantryy.processMovement();
+           
+           // verify that the limit switches are in the correct state depending on if the motor is still moving or not
+           // if moving switch should not be pressed.  if not moving switch should be pressed
+           if (!ss_gantryy.processMovement() && !digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;   // Check to see if home switch pressed too early
+           if (!ss_gantryx.processMovement() && !digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;   // Check to see if home switch pressed too early
 
             if (!ss_tray.motionComplete() && !digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1; // Check to see if home switch pressed before movement complete
-            
-            if (ss_tray.motionComplete()){
+      
+                         
+            if (ss_tray.motionComplete() && ss_gantryx.processMovement() && ss_gantryy.processMovement()){
                 if (digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1;   // Check if home switch pressed at (0,0) position
-                else currState = START_GANTRY_MOVE;
+                if (digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;    // Homing cycle flag in case misstep occurs
+                if (digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;    // Homing cycle flag in case misstep occurs
+              
+                currState = START_GANTRY_MOVE;
+                currPos = 0; // set the starting position
+               
             }
             break;
 
@@ -323,12 +362,13 @@ void loop() {
             ss_gantryx.processMovement();
             ss_gantryy.processMovement();
 
-            if (!ss_gantryy.processMovement() && !digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;   // Check to see if home switch pressed too early
-            if (!ss_gantryx.processMovement() && !digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;   // Check to see if home switch pressed too early
+// remove this code.  Only check the home position when going to position 0,0                        
+//            if (!ss_gantryy.processMovement() && !digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;   // Check to see if home switch pressed too early
+//            if (!ss_gantryx.processMovement() && !digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;   // Check to see if home switch pressed too early
 
             if (ss_gantryx.processMovement() && ss_gantryy.processMovement()){
-                if (digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;    // Homing cycle flag in case misstep occurs
-                if (digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;    // Homing cycle flag in case misstep occurs
+//                if (digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;    // Homing cycle flag in case misstep occurs
+//               if (digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;    // Homing cycle flag in case misstep occurs
                 currState = START_PICTURE;
             } 
             break;    
@@ -350,12 +390,15 @@ void loop() {
 
         case FINISH_PICTURE:
             if (digitalRead(DI_CAM_FAILED)==LOW){
-                currPos++; // the next picture
-                if (currPos > NPOS) && digitalRead(DI_CAM_MISPRINT) ==LOW) {
+                
+                if (currPos >= NPOS) && digitalRead(DI_CAM_MISPRINT) ==LOW) {
                     // finished all of the inspections and they all passed
                     digitalWrite(DO_WIP,LOW);
                     currState = START_WIPER_MOVE_OUT;
 
+                } else {
+                    currPos++; // the next picture
+                    currState = START_GANTRY_MOVE; // move to the next gantry position position 
                 }
             } else {
                 if (digitalRead(DI_CAM_MISPRINT)==HIGH){
