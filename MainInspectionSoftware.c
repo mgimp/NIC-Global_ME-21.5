@@ -1,13 +1,6 @@
 #include "Arduino.h"
 #include "SpeedyStepper.h"
 
-// the home swith logic is confusing because its not clear from the code
-// if digitalRead(DI_HOME_YGANTRY) means the switch is pressed or not pressed
-// suggest using
-// #define HOMESWITCH_PRESSED LOW  // this define can then be changed depending on wiring
-// #define HOMESWITCH_RELEASED HIGH
-// if (digitalRead(DI_HOME_YGANTRY) == HOMESWITCH_PRESSED)
-
 // digital IO pins
 // DO = digital output
 // DI = digital input
@@ -26,6 +19,12 @@
 #define DI_HOME_YGANTRY  ?
 #define DI_HOME_WIPER  ?
 #define DI_HOME_TRAY  ?   // the home should be on the inside of the inspection chamber
+
+// home switch values
+#define HOMESWITCH_PRESSED LOW      // exists to clarify home switch states
+#define HOMESWITCH_RELEASED HIGH    // exists to clarify home switch states
+// example:
+// if (digitalRead(DI_HOME_YGANTRY) == HOMESWITCH_PRESSED)
 
 // button inputs
 #define DI_EMERGENCYSTOP ?
@@ -47,9 +46,6 @@
 #define NPOS 8   // number of points the gantry must move to capture the pictures
 #define Y 0    // the long gantry direction
 #define X 1    // the short gantry direction
-
-// Global Variables
-
 
 // xy position to move to.  These are in steps from the home position
 int xyposition[NPOS] = {
@@ -114,14 +110,14 @@ int currPos;            // keeps track of where we are on the gantry
 int homingStep;         // A variable for keeping track of which gantry is being homed
 int flag_homingError;       // A variable for keeping track of gantry homing success
 
-// !!!OOS Errors start as 1 so that an initial homing cycle will happen!!!
+// OOS Errors start as 1 so that an initial homing cycle will happen
 int flag_OOS_tray = 1;      // out of step error for tray
 int flag_OOS_wiper = 1;     // out of step error for wiper
 int flag_OOS_gantryy = 1;   // out of step error for y gantry
 int flag_OOS_gantryx = 1;   // out of step error for x gantry
 
 // stepper motors
-SpeedyStepper ss_gantryx;  
+SpeedyStepper ss_gantryx;   // short travel direction
 SpeedyStepper ss_gantryy;   // long travel direction
 SpeedyStepper ss_wiper;
 SpeedyStepper ss_tray;
@@ -150,8 +146,9 @@ int initializeMotorSpeeds(){
 }
 
 void setup(){
+    initializeMotorSpeeds();
+
     // -----SETUP ALL DIGITAL I/O-----//
-   
     // Assign IO pins used for Step and Direction
     ss_gantryx.connectToPins(DO_XGANTRY_PUL, DO_XGANTRY_DIR);
     ss_gantryy.connectToPins(DO_YGANTRY_PUL, DO_YGANTRY_DIR);
@@ -320,7 +317,7 @@ void loop() {
             ss_tray.setupMoveInMilimeter(0);
                          
             // also move the gantry to position 0,0. This lets you check the homing
-             ss_gantryx.setupMoveInSteps(0,0);
+            ss_gantryx.setupMoveInSteps(0,0);
             ss_gantryy.setupMoveInSteps(0,0);
                          
             state = FINISH_TRAY_MOVE_IN;   
@@ -329,20 +326,19 @@ void loop() {
         case FINISH_TRAY_MOVE_IN:   
             ss_tray.processMovement();
                
-           // move the gantry to 0,0              
-           ss_gantryx.processMovement();
-           ss_gantryy.processMovement();
-           
-           // verify that the limit switches are in the correct state depending on if the motor is still moving or not
-           // if moving switch should not be pressed.  if not moving switch should be pressed
-           if (!ss_gantryy.processMovement() && !digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;   // Check to see if home switch pressed too early
-           if (!ss_gantryx.processMovement() && !digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;   // Check to see if home switch pressed too early
-
-            if (!ss_tray.motionComplete() && !digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1; // Check to see if home switch pressed before movement complete
+            // move the gantry to 0,0              
+            ss_gantryx.processMovement();
+            ss_gantryy.processMovement();
+            
+            // verify that the limit switches are in the correct state depending on if the motor is still moving or not
+            // if moving switch should not be pressed.  if not moving switch should be pressed
+            if (!ss_gantryy.processMovement() && !digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;   // Check to see if home switch pressed too early
+            if (!ss_gantryx.processMovement() && !digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;   // Check to see if home switch pressed too early
+            if (!ss_tray.motionComplete() && !digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1; // Check to see if home switch pressed too early
       
                          
             if (ss_tray.motionComplete() && ss_gantryx.processMovement() && ss_gantryy.processMovement()){
-                if (digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1;   // Check if home switch pressed at (0,0) position
+                if (digitalRead(DI_HOME_TRAY)) flag_OOS_tray = 1;           // Check if home switch pressed at (0,0) position
                 if (digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;    // Homing cycle flag in case misstep occurs
                 if (digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;    // Homing cycle flag in case misstep occurs
               
@@ -362,13 +358,7 @@ void loop() {
             ss_gantryx.processMovement();
             ss_gantryy.processMovement();
 
-// remove this code.  Only check the home position when going to position 0,0                        
-//            if (!ss_gantryy.processMovement() && !digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;   // Check to see if home switch pressed too early
-//            if (!ss_gantryx.processMovement() && !digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;   // Check to see if home switch pressed too early
-
             if (ss_gantryx.processMovement() && ss_gantryy.processMovement()){
-//                if (digitalRead(DI_HOME_YGANTRY)) flag_OOS_gantryy = 1;    // Homing cycle flag in case misstep occurs
-//               if (digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;    // Homing cycle flag in case misstep occurs
                 currState = START_PICTURE;
             } 
             break;    
