@@ -84,6 +84,7 @@ typedef enum  {
 
     START_PICTURE,
     WAIT_FOR_PICTURE,
+    NEXT_PICTURE,
     FINISH_PICTURE,
 
     START_TRAY_MOVE_OUT,
@@ -374,14 +375,24 @@ void loop() {
         case WAIT_FOR_PICTURE:
             if (digitalRead(DI_CAM_GOTPICTURE)==HIGH) {
                 // record the data is needed
-                currState=FINISH_PICTURE;
+                currState=NEXT_PICTURE;
             }
             break;
+        
+        case NEXT_PICTURE:
+                if (currPos < NPOS){
+                    currPos++; //Update the next position for the gantry
+                    currState = START_GANTRY_MOVE; //Goes into the next position for taking a picture picture
+                } else { //After all 8 positions has been completed
+                    currState = FINISH_PICTURE;
+                }
+            break;            
 
         case FINISH_PICTURE:
             if (digitalRead(DI_CAM_FAILED)==LOW){
                 
                 if (currPos >= NPOS) && digitalRead(DI_CAM_MISPRINT) ==LOW) {
+
                     // finished all of the inspections and they all passed
                     digitalWrite(DO_WIP,LOW);
                     currState = START_WIPER_MOVE_OUT;
