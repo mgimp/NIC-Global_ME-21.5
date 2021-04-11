@@ -32,3 +32,11 @@ Power
     GND3
 
 RESET
+
+
+In Test1, the system got stuck in FINISH_WIPER_MOVE_OUT for unknown reasons.
+    Testing shows that the motion setup in the previou case never completes.
+    This problem was corrected by changing the to setupInMovementSteps rather than Millimeters for some reason.
+    [133 - 143] We should probably set speed and acceleration in millimeters rather than steps.
+
+[385 - 386] Are the x and y positions for gantry supposed to be in millimeters or steps? It is currently programmed for steps.
