@@ -68,8 +68,10 @@ typedef enum  {
     START_HOMING_CYCLE,     // initialize variables for homing
     FINISH_HOMING_CYCLE,       // clean up after homing
 
-    START_TRAY_MOVE_OUT_WTS,     // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
-    FINISH_TRAY_MOVE_OUT_WTS,    // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
+    START_TRAY_MOVE_OUT,
+    FINISH_TRAY_MOVE_OUT,
+    START_TRAY_MOVE_IN,
+    FINISH_TRAY_MOVE_IN,
 
     WAIT_TO_START,          // wait for the start button, then begin the inspection
 
@@ -86,11 +88,6 @@ typedef enum  {
     WAIT_FOR_PICTURE,
     NEXT_PICTURE,
     FINISH_PICTURE,
-
-    START_TRAY_MOVE_OUT,
-    FINISH_TRAY_MOVE_OUT,
-    START_TRAY_MOVE_IN,
-    FINISH_TRAY_MOVE_IN,
 
     START_WIPER_MOVE_OUT,
     FINISH_WIPER_MOVE_OUT,
@@ -278,7 +275,7 @@ void loop() {
             
         case FINISH_HOMING_CYCLE:
             digitalWrite(DO_WIP,LOW);               // Turn off WIP light
-            currState = START_TRAY_MOVE_OUT_WTS;    // WAIT_TO_START assumes tray is out
+            currState = START_TRAY_MOVE_OUT;    // WAIT_TO_START assumes tray is out
                          
             //reset OOS flags
             flag_OOS_gantryy=0;
@@ -288,13 +285,13 @@ void loop() {
                          
             break;
 
-        case START_TRAY_MOVE_OUT_WTS:               // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
+        case START_TRAY_MOVE_OUT:               // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
             digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
             ss_tray.setupMoveInMillimeters(980);
-            currState = FINISH_TRAY_MOVE_OUT_WTS;
+            currState = FINISH_TRAY_MOVE_OUT;
             break;
         
-        case FINISH_TRAY_MOVE_OUT_WTS:              // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
+        case FINISH_TRAY_MOVE_OUT:              // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
                 digitalWrite(DO_WIP,LOW);           // Turn on WIP light
@@ -417,7 +414,7 @@ void loop() {
             // The basic system behavior has the part under observation returned to the operator when it fails inspection.
             // It's possible that
              digitalWrite(DO_Part_Failure,HIGH);    // This LED cleared when the start button is pressed in the WAIT_TO_START case
-             currState = START_TRAY_MOVE_OUT;
+             currState = START_HOMING_CYCLE;
              break;
                          
         case START_WIPER_MOVE_OUT:
@@ -446,21 +443,7 @@ void loop() {
             
             if (ss_wiper.motionComplete()){
                 if (digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1;   // an extra check to see if a misstep occured
-                currState = START_TRAY_MOVE_OUT;
-            }
-            break;
-
-        case START_TRAY_MOVE_OUT:
-            ss_tray.setupMoveInMillimeters(980);
-            currState = FINISH_TRAY_MOVE_OUT;
-            break;
-
-        case FINISH_TRAY_MOVE_OUT:
-            digitalWrite(DO_Part_Failure,LOW);
-            ss_wiper.processMovement();
-            if (ss_wiper.motionComplete()){
-                digitalWrite(DO_WIP,LOW);               // Turn off WIP light
-                currState = START_HOMING_CYCLE; //Homing cycle checks for misstep errors that may have occurred
+                currState = START_HOMING_CYCLE;
             }
             break;
 
@@ -473,41 +456,3 @@ void loop() {
 
 
 }
-
-/*
------TEST SETUP-----
-Digital PWM
-    D0  DI_HOME_TRAY; DI_HOME_WIPER; DI_HOME_XGANTRY; DI_HOME_YGANTRY
-    D1  DO_TRAY_PUL
-    D2  DO_WIPER_PUL
-    D3  DO_XGANTRY_PUL
-    D4  DO_YGANTRY_PUL
-    D5  DO_TRAY_DIR; DO_WIPER_PUL; DO_XGANTRY_DIR; DO_YGANTRY_PUL
-    D6  DI_EMERGENCYSTOP
-    D7  DI_START
-    D8  
-    D9  DO_CAM_TAKEPICTURE
-    D10 DI_CAM_GOTPICTURE
-    D11 DI_CAM_FAILED
-    D12 DI_CAM_MISPRINT
-    D13
-
-Analog In
-    A0/D14 DO_Ready
-    A1/D15 DO_Part_Failure
-    A2/D16 DO_WIP
-    A3/D17 DO_System_Failure
-    A4/D18
-    A5/D19
-
-Power
-    5V
-    3.3V
-    3V
-    Vin
-    GND1
-    GND2
-    GND3
-
-RESET
-*/
