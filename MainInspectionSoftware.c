@@ -193,6 +193,7 @@ void setup(){
 // 'currState' is the variable that controls the working case.
 // Cases contain internal parameters to determine which cases succeed each other.
 void loop() {
+    Serial.print("loop"); // TEST SCRIPT
 
     // -----EMERGENCY STOP BUTTON----- //
     // Checks to see if stop button has been pressed before continuing to the current case.
@@ -222,6 +223,7 @@ void loop() {
 
         // ERROR_CONDITION is subject to change at this time -28MAR2021
         case ERROR_CONDITION:
+            Serial.print("ERROR_CONDITION start"); // TEST SCRIPT
             // flash the LED until
             digitalWrite(DO_WIP,!digitalRead(DO_WIP));
             delay(500);
@@ -229,17 +231,21 @@ void loop() {
             // right now there is no way of exiting an error condition
             // this is something to be decided
             // for examlple could have the emergency stop button be latching and you need to undo it and then press start?
+            Serial.print("ERROR_CONDITION end"); // TEST SCRIPT
             break;
 
         // -----HOMING CYCLE CASES----- //
         case START_HOMING_CYCLE:
+            Serial.print("START_HOMING_CYCLE start"); // TEST SCRIPT
             digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
             homingStep = 1;         // A variable for keeping track of which gantry is being homed
             flag_homingError=0;       // A variable for keeping track of gantry homing success
             currState = HOMING_CYCLE;
+            Serial.print("START_HOMING_CYCLE end"); // TEST SCRIPT
             break;
             
         case HOMING_CYCLE:
+            Serial.print("HOMING_CYCLE start"); // TEST SCRIPT
             // This is a partially BLOCKING CASE.  It blocks during the homing of each axis, but releases between moves.
             // case uses the SpeedyStepper pre-built blocking homing function
             // SpeedyStepper.ccp line[325]
@@ -270,10 +276,12 @@ void loop() {
 
             if (flag_homingError == false) currState = ERROR_CONDITION;
 
-            homingStep++;            
+            homingStep++;
+            Serial.print("START_HOMING_CYCLE end"); // TEST SCRIPT            
             break;
             
         case FINISH_HOMING_CYCLE:
+            Serial.print("FINISH_HOMING_CYCLE start"); // TEST SCRIPT
             digitalWrite(DO_WIP,LOW);               // Turn off WIP light
             currState = START_TRAY_MOVE_OUT;    // WAIT_TO_START assumes tray is out
                          
@@ -282,24 +290,30 @@ void loop() {
             flag_OOS_gantryx=0;
             flag_OOS_wiper=0;
             flag_OOS_tray=0; 
-                         
+
+            Serial.print("FINISH_HOMING_CYCLE end"); // TEST SCRIPT     
             break;
 
         case START_TRAY_MOVE_OUT:               // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
+            Serial.print("START_TRAY_MOVE_OUT start"); // TEST SCRIPT
             digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
             ss_tray.setupMoveInMillimeters(980);
             currState = FINISH_TRAY_MOVE_OUT;
+            Serial.print("START_TRAY_MOVE_OUT end"); // TEST SCRIPT
             break;
         
         case FINISH_TRAY_MOVE_OUT:              // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
+            Serial.print("FINISH_TRAY_MOVE_OUT start"); // TEST SCRIPT
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
                 digitalWrite(DO_WIP,LOW);           // Turn on WIP light
                 currState = WAIT_TO_START; 
             }            
+            Serial.print("START_TRAY_MOVE_OUT end"); // TEST SCRIPT
             break;
 
         case WAIT_TO_START:
+            Serial.print("WAIT_TO_START start"); // TEST SCRIPT
             // this case assumes the tray is out in the home position
             // wait until the start button is pressed
             digitalWrite(DO_Ready,HIGH);
@@ -310,9 +324,11 @@ void loop() {
                 currState = START_TRAY_MOVE_IN;
             }
             delay(10);
+            Serial.print("WAIT_TO_START end"); // TEST SCRIPT
             break;
 
         case START_TRAY_MOVE_IN:
+            Serial.print("START_TRAY_MOVE_IN start"); // TEST SCRIPT
             ss_tray.setupMoveInMillimeters(0);
                          
             // also move the gantry to position 0,0. This lets you check the homing
@@ -320,9 +336,11 @@ void loop() {
             ss_gantryy.setupMoveInSteps(0);
                          
             currState = FINISH_TRAY_MOVE_IN;   
+            Serial.print("START_TRAY_MOVE_IN end"); // TEST SCRIPT
             break;
 
         case FINISH_TRAY_MOVE_IN:   
+            Serial.print("FINISH_TRAY_MOVE_IN start"); // TEST SCRIPT
             ss_tray.processMovement();
                
             // move the gantry to 0,0              
@@ -345,48 +363,60 @@ void loop() {
                 currPos = 0; // set the starting position
                
             }
+            Serial.print("FINISH_TRAY_MOVE_IN end"); // TEST SCRIPT
             break;
 
         case START_GANTRY_MOVE:
+            Serial.print("START_GANTRY_MOVE start"); // TEST SCRIPT
             ss_gantryx.setupMoveInSteps(xyposition[currPos][X]);
             ss_gantryy.setupMoveInSteps(xyposition[currPos][Y]);
             currState = FINISH_GANTRY_MOVE;
+            Serial.print("START_GANTRY_MOVE end"); // TEST SCRIPT
             break;
 
         case FINISH_GANTRY_MOVE:
+            Serial.print("FINISH_GANTRY_MOVE start"); // TEST SCRIPT
             ss_gantryx.processMovement();
             ss_gantryy.processMovement();
 
             if (ss_gantryx.processMovement() && ss_gantryy.processMovement()){
                 currState = START_PICTURE;
             } 
+            Serial.print("FINISH_GANTRY_MOVE end"); // TEST SCRIPT
             break;    
 
         case START_PICTURE:
+            Serial.print("START_PICTURE start"); // TEST SCRIPT
             // code to take a picture at position   currMove
             digitalWrite(DO_CAM_TAKEPICTURE,HIGH);
             delay(20);
             digitalWrite(DO_CAM_TAKEPICTURE,LOW);      
             currState= WAIT_FOR_PICTURE;
+            Serial.print("START_PICTURE end"); // TEST SCRIPT
             break;
 
         case WAIT_FOR_PICTURE:
+            Serial.print("WAIT_FOR_PICTURE start"); // TEST SCRIPT
             if (digitalRead(DI_CAM_GOTPICTURE)==HIGH) {
                 // record the data is needed
                 currState=NEXT_PICTURE;
             }
+            Serial.print("WAIT_FOR_PICTURE end"); // TEST SCRIPT
             break;
         
         case NEXT_PICTURE:
+            Serial.print("NEXT_PICTURE start"); // TEST SCRIPT
                 if (currPos < NPOS){
                     currPos++; //Update the next position for the gantry
                     currState = START_GANTRY_MOVE; //Goes into the next position for taking a picture picture
                 } else { //After all 8 positions has been completed
                     currState = FINISH_PICTURE;
                 }
+            Serial.print("NEXT_PICTURE start"); // TEST SCRIPT
             break;            
 
         case FINISH_PICTURE:
+            Serial.print("FINISH_PICTURE start"); // TEST SCRIPT
             if (digitalRead(DI_CAM_FAILED)==LOW){
                 
                 if ((currPos >= NPOS) && digitalRead(DI_CAM_MISPRINT) ==LOW) {
@@ -406,37 +436,47 @@ void loop() {
                 // record a failure (? within compliance case)
                 }
             }
+            Serial.print("FINISH_PICTURE end"); // TEST SCRIPT
             break;
 
         case PART_COMPLIANCE_FAILURE:
+            Serial.print("PART_COMPLIANCE_FAILURE start"); // TEST SCRIPT
             // -----BAD PART----- //
             // This is the only case made specially for a part being unsatisfactory.
             // The basic system behavior has the part under observation returned to the operator when it fails inspection.
             // It's possible that
              digitalWrite(DO_Part_Failure,HIGH);    // This LED cleared when the start button is pressed in the WAIT_TO_START case
              currState = START_HOMING_CYCLE;
+             Serial.print("PART_COMPLIANCE_FAILURE end"); // TEST SCRIPT
              break;
                          
         case START_WIPER_MOVE_OUT:
+            Serial.print("START_WIPER_MOVE_OUT start"); // TEST SCRIPT
             digitalWrite(DO_WIP,HIGH);               // Turn on WIP light
             ss_wiper.setupMoveInMillimeters(480);
             currState = FINISH_WIPER_MOVE_OUT;
+            Serial.print("START_WIPER_MOVE_OUT end"); // TEST SCRIPT
             break;
 
         case FINISH_WIPER_MOVE_OUT:   
+            Serial.print("FINISH_WIPER_MOVE_OUT start"); // TEST SCRIPT
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
                 delay(200); // a little sloppy delaying here
                 currState = START_WIPER_MOVE_IN;
             }
+            Serial.print("FINISH_WIPER_MOVE_OUT end"); // TEST SCRIPT
             break; 
 
         case START_WIPER_MOVE_IN:
+            Serial.print("START_WIPER_MOVE_IN start"); // TEST SCRIPT
             ss_wiper.setupMoveInMillimeters(0);
             currState = FINISH_WIPER_MOVE_IN;
+            Serial.print("START_WIPER_MOVE_IN end"); // TEST SCRIPT
             break;
 
         case FINISH_WIPER_MOVE_IN:   
+            Serial.print("FINISH_WIPER_MOVE_IN start"); // TEST SCRIPT
             ss_wiper.processMovement();
             
             if (!ss_wiper.motionComplete() && !digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1; // Check to see if home switch pressed before movement complete
@@ -445,9 +485,11 @@ void loop() {
                 if (digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1;   // an extra check to see if a misstep occured
                 currState = START_HOMING_CYCLE;
             }
+            Serial.print("FINISH_WIPER_MOVE_IN end"); // TEST SCRIPT
             break;
 
         default:    // This should never be called
+            Serial.print("default"); // TEST SCRIPT
             delay(20);
             break;
 
