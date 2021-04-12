@@ -131,23 +131,15 @@ int initializeMotorSpeeds(){
     
     ss_gantryx.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
     ss_gantryx.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
-    // ss_gantryx.setSpeedInStepsPerSecond(8000);
-    // ss_gantryx.setAccelerationInStepsPerSecondPerSecond(9500);
     
     ss_gantryy.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
     ss_gantryy.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
-    // ss_gantryy.setSpeedInStepsPerSecond(8000);
-    // ss_gantryy.setAccelerationInStepsPerSecondPerSecond(9500);
 
     ss_wiper.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
     ss_wiper.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
-    // ss_wiper.setSpeedInStepsPerSecond(8000);
-    // ss_wiper.setAccelerationInStepsPerSecondPerSecond(9500);
 
     ss_tray.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
     ss_tray.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
-    // ss_tray.setSpeedInStepsPerSecond(8000);
-    // ss_tray.setAccelerationInStepsPerSecondPerSecond(9500);
     
 }
 

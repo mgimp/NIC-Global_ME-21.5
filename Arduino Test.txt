@@ -44,3 +44,9 @@ In Test1, the system got stuck in FINISH_WIPER_MOVE_OUT for unknown reasons.
 
 -----Test 2-----
 [51] Its clear from looking at xyposition values that they are meant to be in millimeters so I'm going to correct any instances of movement in steps.
+
+I changed over the movement functions to use millimeters and the effect was to slow down the process considerably.
+    We based out millimeter movements on the setStepsPerMillimeter function, so the issue should not be with the speed.
+    The overall effect seems to be that waaaaay more cycles are necessary to accomplish the same movement with millimeter movement as with step movement.
+    This is a significant issue but could be circumvented by using exclusively step functions over millimeter functions.
+    Looking into the setupMovementInMillimeters function, its clear that the function really only calls setupMovementInSteps with the millimeter multiplied by the scaling factor steps/millimeter.
