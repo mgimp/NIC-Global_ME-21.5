@@ -53,11 +53,11 @@ float xyposition[NPOS][2] = {
     {262.5,337.5},               // Second position
     {262.5,562.5},               // Third posistion
     {262.5,787.5},               // Fourth position end of y axis and end of the x axis
-    {87.5, 787.5},               // Fifth position retracts the x axis
-    {87.5, 562.5},               // Sixth position
-    {87.5, 337.5},               // Seventh position 
-    {87.5, 112.5},               // Eighth position
-    {0, 0}
+    {87.5,787.5},               // Fifth position retracts the x axis
+    {87.5,562.5},               // Sixth position
+    {87.5,337.5},               // Seventh position 
+    {87.5,112.5},               // Eighth position
+    {0,0}
     };
 
 // enumeration of possible states
@@ -129,32 +129,31 @@ int initializeMotorSpeeds(){
     ss_wiper.setStepsPerMillimeter(17.5 * 2);
     ss_tray.setStepsPerMillimeter(17.5 * 2);
     
-    // Why are these in Steps/second and not millimeters/second?
-    ss_gantryx.setSpeedInStepsPerSecond(8000);
-    ss_gantryx.setAccelerationInStepsPerSecondPerSecond(9500);
+    ss_gantryx.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
+    ss_gantryx.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
+    // ss_gantryx.setSpeedInStepsPerSecond(8000);
+    // ss_gantryx.setAccelerationInStepsPerSecondPerSecond(9500);
+    
+    ss_gantryy.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
+    ss_gantryy.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
+    // ss_gantryy.setSpeedInStepsPerSecond(8000);
+    // ss_gantryy.setAccelerationInStepsPerSecondPerSecond(9500);
 
-    ss_gantryy.setSpeedInStepsPerSecond(8000);
-    ss_gantryy.setAccelerationInStepsPerSecondPerSecond(9500);
+    ss_wiper.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
+    ss_wiper.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
+    // ss_wiper.setSpeedInStepsPerSecond(8000);
+    // ss_wiper.setAccelerationInStepsPerSecondPerSecond(9500);
 
-    ss_wiper.setSpeedInStepsPerSecond(8000);
-    ss_wiper.setAccelerationInStepsPerSecondPerSecond(9500);
-
-    ss_tray.setSpeedInStepsPerSecond(8000);
-    ss_tray.setAccelerationInStepsPerSecondPerSecond(9500);
+    ss_tray.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
+    ss_tray.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
+    // ss_tray.setSpeedInStepsPerSecond(8000);
+    // ss_tray.setAccelerationInStepsPerSecondPerSecond(9500);
     
 }
 
 void setup(){
     Serial.begin(9600); // TEST SCRIPT
-    Serial.print("HOMING_CYCLE: "); // TEST SCRIPT
-    Serial.print(HOMING_CYCLE); // TEST SCRIPT
-    Serial.print("\n"); // TEST SCRIPT
-    Serial.print("PART_COMPLIANCE FAILURE: "); // TEST SCRIPT
-    Serial.print(PART_COMPLIANCE_FAILURE); // TEST SCRIPT
-    Serial.print("\n"); // TEST SCRIPT
-    Serial.print("WAIT_FOR_PICTURE: "); // TEST SCRIPT
-    Serial.print(WAIT_FOR_PICTURE); // TEST SCRIPT
-    Serial.print("\n"); // TEST SCRIPT
+
     initializeMotorSpeeds();
 
     // -----SETUP ALL DIGITAL I/O-----//
@@ -204,6 +203,7 @@ void setup(){
 // Cases contain internal parameters to determine which cases succeed each other.
 void loop() {
     Serial.print("loop\n"); // TEST SCRIPT
+    Serial.print("currState = "); Serial.print(currState); Serial.print("\n"); // TEST SCRIPT
 
     // -----EMERGENCY STOP BUTTON----- //
     // Checks to see if stop button has been pressed before continuing to the current case.
@@ -346,8 +346,8 @@ void loop() {
             ss_tray.setupMoveInMillimeters(0);
                          
             // also move the gantry to position 0,0. This lets you check the homing
-            ss_gantryx.setupMoveInSteps(0);
-            ss_gantryy.setupMoveInSteps(0);
+            ss_gantryx.setupMoveInMillimeters(0);
+            ss_gantryy.setupMoveInMillimeters(0);
                          
             currState = FINISH_TRAY_MOVE_IN;   
             Serial.print("START_TRAY_MOVE_IN end\n"); // TEST SCRIPT
@@ -382,8 +382,8 @@ void loop() {
 
         case START_GANTRY_MOVE:
             Serial.print("START_GANTRY_MOVE start\n"); // TEST SCRIPT
-            ss_gantryx.setupMoveInSteps(xyposition[currPos][X]);
-            ss_gantryy.setupMoveInSteps(xyposition[currPos][Y]);
+            ss_gantryx.setupMoveInMillimeters(xyposition[currPos][X]);
+            ss_gantryy.setupMoveInMillimeters(xyposition[currPos][Y]);
             currState = FINISH_GANTRY_MOVE;
             Serial.print("START_GANTRY_MOVE end\n"); // TEST SCRIPT
             break;
@@ -458,7 +458,6 @@ void loop() {
             // -----BAD PART----- //
             // This is the only case made specially for a part being unsatisfactory.
             // The basic system behavior has the part under observation returned to the operator when it fails inspection.
-            // It's possible that
              digitalWrite(DO_Part_Failure,HIGH);    // This LED cleared when the start button is pressed in the WAIT_TO_START case
              currState = START_HOMING_CYCLE;
              Serial.print("PART_COMPLIANCE_FAILURE end\n"); // TEST SCRIPT
@@ -467,8 +466,7 @@ void loop() {
         case START_WIPER_MOVE_OUT:
             Serial.print("START_WIPER_MOVE_OUT start\n"); // TEST SCRIPT
             digitalWrite(DO_WIP,HIGH);               // Turn on WIP light
-            ss_wiper.setupMoveInSteps(480); // TEST SCRIPT
-            // ss_wiper.setupMoveInMillimeters(480);
+            ss_wiper.setupMoveInMillimeters(480); 
             currState = FINISH_WIPER_MOVE_OUT;
             Serial.print("START_WIPER_MOVE_OUT end\n"); // TEST SCRIPT
             break;
@@ -477,7 +475,6 @@ void loop() {
             Serial.print("FINISH_WIPER_MOVE_OUT start\n"); // TEST SCRIPT
             ss_wiper.processMovement();
             if (ss_wiper.motionComplete()){
-                Serial.print("Motion Complete\n"); // TEST SCRIPT
                 delay(200); // a little sloppy delaying here
                 currState = START_WIPER_MOVE_IN;
             }

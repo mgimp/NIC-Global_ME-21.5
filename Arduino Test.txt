@@ -33,10 +33,14 @@ Power
 
 RESET
 
-
+-----Test 1-----
 In Test1, the system got stuck in FINISH_WIPER_MOVE_OUT for unknown reasons.
     Testing shows that the motion setup in the previou case never completes.
-    This problem was corrected by changing the to setupInMovementSteps rather than Millimeters for some reason.
+    This problem was corrected by changing the to setupInMovementSteps rather than setupMovementInMillimeters for some reason.
+    I suspect that the actuator was taking a very long time to get into position.
     [133 - 143] We should probably set speed and acceleration in millimeters rather than steps.
 
 [385 - 386] Are the x and y positions for gantry supposed to be in millimeters or steps? It is currently programmed for steps.
+
+-----Test 2-----
+[51] Its clear from looking at xyposition values that they are meant to be in millimeters so I'm going to correct any instances of movement in steps.
