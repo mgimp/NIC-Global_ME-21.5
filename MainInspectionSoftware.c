@@ -48,16 +48,16 @@
 #define X 1     // the short gantry direction
 
 // xy position to move to.  These are in steps from the home position
-int xyposition[NPOS][2] = {
+float xyposition[NPOS][2] = {
     {262.5,112.5},               // First position
     {262.5,337.5},               // Second position
     {262.5,562.5},               // Third posistion
     {262.5,787.5},               // Fourth position end of y axis and end of the x axis
-    {87.5, 787.5},               // Fifth position retracts the x axis
-    {87.5, 562.5},               // Sixth position
-    {87.5, 337.5},               // Seventh position 
-    {87.5, 112.5},               // Eighth position
-    {0, 0}
+    {87.5,787.5},               // Fifth position retracts the x axis
+    {87.5,562.5},               // Sixth position
+    {87.5,337.5},               // Seventh position 
+    {87.5,112.5},               // Eighth position
+    {0,0}
     };
 
 // enumeration of possible states
@@ -130,18 +130,18 @@ int initializeMotorSpeeds(){
     ss_tray.setStepsPerMillimeter(17.5 * 2);
     
     // Why are these in Steps/second and not millimeters/second?
-    ss_gantryx.setSpeedInStepsPerSecond(8000);
-    ss_gantryx.setAccelerationInStepsPerSecondPerSecond(9500);
+    ss_gantryx.setSpeedInMillimetersPerSecond(228.57);
+    ss_gantryx.setAccelerationInMillimetersPerSecondPerSecond(271.43);
 
-    ss_gantryy.setSpeedInStepsPerSecond(8000);
-    ss_gantryy.setAccelerationInStepsPerSecondPerSecond(9500);
+    ss_gantryy.setSpeedInMillimetersPerSecond(228.57);
+    ss_gantryy.setAccelerationInMillimetersPerSecondPerSecond(271.43);
 
-    ss_wiper.setSpeedInStepsPerSecond(8000);
-    ss_wiper.setAccelerationInStepsPerSecondPerSecond(9500);
-
-    ss_tray.setSpeedInStepsPerSecond(8000);
-    ss_tray.setAccelerationInStepsPerSecondPerSecond(9500);
+    ss_wiper.setSpeedInMillimetersPerSecond(228.57);
+    ss_wiper.setAccelerationInMillimetersPerSecondPerSecond(271.43);
     
+    ss_tray.setSpeedInMillimetersPerSecond(228.57);
+    ss_tray.setAccelerationInMillimetersPerSecondPerSecond(271.43);
+
 }
 
 void setup(){
@@ -235,7 +235,7 @@ void loop() {
         case START_HOMING_CYCLE:
             digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
             homingStep = 1;         // A variable for keeping track of which gantry is being homed
-            flag_homingError=0;       // A variable for keeping track of gantry homing success
+            flag_homingError=true;       // A variable for keeping track of gantry homing success
             currState = HOMING_CYCLE;
             break;
             
@@ -316,8 +316,8 @@ void loop() {
             ss_tray.setupMoveInMillimeters(0);
                          
             // also move the gantry to position 0,0. This lets you check the homing
-            ss_gantryx.setupMoveInSteps(0);
-            ss_gantryy.setupMoveInSteps(0);
+            ss_gantryx.setupMoveInMillimeters(0)
+            ss_gantryy.setupMoveInMillimeters(0);
                          
             currState = FINISH_TRAY_MOVE_IN;   
             break;
@@ -348,8 +348,8 @@ void loop() {
             break;
 
         case START_GANTRY_MOVE:
-            ss_gantryx.setupMoveInSteps(xyposition[currPos][X]);
-            ss_gantryy.setupMoveInSteps(xyposition[currPos][Y]);
+            ss_gantryx.setupMoveInMillimeters(xyposition[currPos][X]);
+            ss_gantryy.setupMoveInMillimeters(xyposition[currPos][Y]);
             currState = FINISH_GANTRY_MOVE;
             break;
 
