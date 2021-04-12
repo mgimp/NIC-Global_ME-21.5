@@ -350,8 +350,8 @@ void loop() {
             break;
 
         case START_GANTRY_MOVE:
-            ss_gantryx.setupMoveInSteps(xyposition[currPos][X]);
-            ss_gantryy.setupMoveInSteps(xyposition[currPos][Y]);
+            ss_gantryx.setupMoveInMillimeter(xyposition[currPos][X]);
+            ss_gantryy.setupMoveInMillimeter(xyposition[currPos][Y]);
             currState = FINISH_GANTRY_MOVE;
             break;
 
@@ -421,7 +421,7 @@ void loop() {
                          
         case START_WIPER_MOVE_OUT:
             digitalWrite(DO_WIP,HIGH);               // Turn on WIP light
-            ss_wiper.setupMoveInMilimeter(480);
+            ss_wiper.setupMoveInMillimeter(480);
             state = FINISH_WIPER_MOVE_OUT;
             break;
 
@@ -434,7 +434,7 @@ void loop() {
             break; 
 
         case START_WIPER_MOVE_IN:
-            ss_wiper.setupMoveInMilimeter(0);
+            ss_wiper.setupMoveInMillimeter(0);
             state = FINISH_WIPER_MOVE_IN;
             break;
 
@@ -450,7 +450,7 @@ void loop() {
             break;
 
         case START_TRAY_MOVE_OUT:
-            ss_tray.setupMoveInMilimeter(980);
+            ss_tray.setupMoveInMillimeter(980);
             state = FINISH_TRAY_MOVE_OUT;
             break;
 
