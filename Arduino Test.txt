@@ -35,7 +35,7 @@ RESET
 
 -----Test 1-----
 In Test1, the system got stuck in FINISH_WIPER_MOVE_OUT for unknown reasons.
-    Testing shows that the motion setup in the previou case never completes.
+    Testing shows that the motion setup in the previous case never completes.
     This problem was corrected by changing the to setupInMovementSteps rather than setupMovementInMillimeters for some reason.
     I suspect that the actuator was taking a very long time to get into position.
     [133 - 143] We should probably set speed and acceleration in millimeters rather than steps.
@@ -50,3 +50,5 @@ I changed over the movement functions to use millimeters and the effect was to s
     The overall effect seems to be that waaaaay more cycles are necessary to accomplish the same movement with millimeter movement as with step movement.
     This is a significant issue but could be circumvented by using exclusively step functions over millimeter functions.
     Looking into the setupMovementInMillimeters function, its clear that the function really only calls setupMovementInSteps with the millimeter multiplied by the scaling factor steps/millimeter.
+
+Apparently Serial.print statements will slow down the movement process so I am going to remove every repeating print statement and only add print statements when a case changes.
