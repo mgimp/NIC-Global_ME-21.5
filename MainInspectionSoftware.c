@@ -44,8 +44,8 @@
 
     
 #define NPOS 9  // number of points the gantry must move to capture the pictures
-#define Y 0     // the long gantry direction
-#define X 1     // the short gantry direction
+#define Y 1     // the long gantry direction
+#define X 0     // the short gantry direction
 
 // xy position to move to.  These are in steps from the home position
 float xyposition[NPOS][2] = {
