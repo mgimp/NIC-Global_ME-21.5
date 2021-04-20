@@ -69,3 +69,5 @@ The speeds are reasonable.
 
 I found a mistake in FINISH_TRAY_MOVE_OUT that caused the movement to be skipped.
     After correcting the mistake, the movement time seems reasonable.
+
+A possible issue exists in the WIPER_MOVE_OUT reporting a different number of steps than WIPER_MOVE_IN.
