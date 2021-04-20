@@ -52,3 +52,20 @@ I changed over the movement functions to use millimeters and the effect was to s
     Looking into the setupMovementInMillimeters function, its clear that the function really only calls setupMovementInSteps with the millimeter multiplied by the scaling factor steps/millimeter.
 
 Apparently Serial.print statements will slow down the movement process so I am going to remove every repeating print statement and only add print statements when a case changes.
+
+I removed all repeating Serial.print statements and the program has sped up significantly - Too much in a lot of areas. 
+    Large movements complete in under a second.
+    Double-checking the application of millimeters movements, I can't find anything that would significantly shorten the distance travelled.
+    I suspect that this has something to do with the lack of a homing function.
+    I'm going to try zeroing all of the positions in the setup code and see if that changes anything.
+
+Zeroing the actuator positions in setup() did nothing to change the speed of the actuator movements.
+    Next I will double check that the speeds are reasonable.
+
+The speeds are reasonable.
+    Next I will check to see if the SpeedyStepper library has any advice on this problem.
+    I'll also check to see if there are any places in the code where we allow the movement to end early. 
+    I'll create a counter for this purpose to see how many steps have been taken during movement.
+
+I found a mistake in FINISH_TRAY_MOVE_OUT that caused the movement to be skipped.
+    After correcting the mistake, the movement time seems reasonable.

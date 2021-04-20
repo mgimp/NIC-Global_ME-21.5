@@ -103,6 +103,7 @@ typedef enum  {
 // -----VARIOUS GLOBAL VARIABLES-----
 systemState currState;  // this holds the current system currState
 int currPos;            // keeps track of where we are on the gantry
+int n = 0; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
 
 // added as global for consistency
 int homingStep;         // A variable for keeping track of which gantry is being homed
@@ -186,6 +187,12 @@ void setup(){
     currState = START_HOMING_CYCLE;
     currPos = 0;  // Renamed to match code
     Serial.print("START_HOMING_CYCLE\n"); // TEST SCRIPT
+
+    // The following is meant to test if the reason for fast gantry movement is the lack of zeroing
+    ss_gantryy.setCurrentPositionInMillimeters(0);  // TEST SCRIPT
+    ss_gantryx.setCurrentPositionInMillimeters(0);  // TEST SCRIPT
+    ss_wiper.setCurrentPositionInMillimeters(0);    // TEST SCRIPT
+    ss_tray.setCurrentPositionInMillimeters(0);     // TEST SCRIPT
 
 }
 
@@ -297,13 +304,16 @@ void loop() {
             ss_tray.setupMoveInMillimeters(980);
             currState = FINISH_TRAY_MOVE_OUT;
             Serial.print("FINISH_TRAY_MOVE_OUT\n"); // TEST SCRIPT
+            n = 0;  // TEST SCRIPT --> States step count for movement
             break;
         
         case FINISH_TRAY_MOVE_OUT:              // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
-            ss_wiper.processMovement();
-            if (ss_wiper.motionComplete()){
+            ss_tray.processMovement();
+            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
+            if (ss_tray.motionComplete()){
                 digitalWrite(DO_WIP,LOW);           // Turn on WIP light
                 currState = WAIT_TO_START;
+                Serial.print("n = ");Serial.print(n);Serial.print("\n"); // TEST SCRIPT --> States step count for movement
                 Serial.print("WAIT_TO_START\n"); // TEST SCRIPT 
             }            
             break;
@@ -331,10 +341,12 @@ void loop() {
                          
             currState = FINISH_TRAY_MOVE_IN;   
             Serial.print("FINISH_TRAY_MOVE_IN\n"); // TEST SCRIPT
+            n = 0;  // TEST SCRIPT --> States step count for movement
             break;
 
         case FINISH_TRAY_MOVE_IN:   
             ss_tray.processMovement();
+            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
                
             // move the gantry to 0,0              
             ss_gantryx.processMovement();
@@ -353,6 +365,7 @@ void loop() {
                 if (digitalRead(DI_HOME_XGANTRY)) flag_OOS_gantryx = 1;    // Homing cycle flag in case misstep occurs
               
                 currState = START_GANTRY_MOVE;
+                Serial.print("n = ");Serial.print(n);Serial.print("\n"); // TEST SCRIPT --> States step count for movement
                 Serial.print("START_GANTRY_MOVE\n"); // TEST SCRIPT
                 currPos = 0; // set the starting position
                
@@ -364,15 +377,19 @@ void loop() {
             ss_gantryy.setupMoveInMillimeters(xyposition[currPos][Y]);
             currState = FINISH_GANTRY_MOVE;
             Serial.print("FINISH_GANTRY_MOVE\n"); // TEST SCRIPT
+            n = 0;  // TEST SCRIPT --> States step count for movement
             break;
 
         case FINISH_GANTRY_MOVE:
             ss_gantryx.processMovement();
             ss_gantryy.processMovement();
+            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
 
             if (ss_gantryx.processMovement() && ss_gantryy.processMovement()){
                 currState = START_PICTURE;
+                Serial.print("n = ");Serial.print(n);Serial.print("\n"); // TEST SCRIPT --> States step count for movement
                 Serial.print("START_PICTURE\n"); // TEST SCRIPT
+                
             } 
             break;    
 
@@ -443,13 +460,16 @@ void loop() {
             ss_wiper.setupMoveInMillimeters(480); 
             currState = FINISH_WIPER_MOVE_OUT;
             Serial.print("FINISH_WIPER_MOVE_OUT\n"); // TEST SCRIPT
+            n = 0;  // TEST SCRIPT --> States step count for movement
             break;
 
         case FINISH_WIPER_MOVE_OUT:   
             ss_wiper.processMovement();
+            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
             if (ss_wiper.motionComplete()){
                 delay(200); // a little sloppy delaying here
                 currState = START_WIPER_MOVE_IN;
+                Serial.print("n = ");Serial.print(n);Serial.print("\n"); // TEST SCRIPT --> States step count for movement
                 Serial.print("START_WIPER_MOVE_IN\n"); // TEST SCRIPT
             }
             break; 
@@ -458,16 +478,19 @@ void loop() {
             ss_wiper.setupMoveInMillimeters(0);
             currState = FINISH_WIPER_MOVE_IN;
             Serial.print("FINISH_WIPER_MOVE_IN\n"); // TEST SCRIPT
+            n = 0;  // TEST SCRIPT --> States step count for movement
             break;
 
         case FINISH_WIPER_MOVE_IN:   
             ss_wiper.processMovement();
+            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
             
             if (!ss_wiper.motionComplete() && !digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1; // Check to see if home switch pressed before movement complete
             
             if (ss_wiper.motionComplete()){
                 if (digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1;   // an extra check to see if a misstep occured
                 currState = START_HOMING_CYCLE;
+                Serial.print("n = ");Serial.print(n);Serial.print("\n"); // TEST SCRIPT --> States step count for movement
                 Serial.print("START_HOMING_CYCLE\n"); // TEST SCRIPT
             }
             break;
