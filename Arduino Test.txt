@@ -71,3 +71,6 @@ I found a mistake in FINISH_TRAY_MOVE_OUT that caused the movement to be skipped
     After correcting the mistake, the movement time seems reasonable.
 
 A possible issue exists in the WIPER_MOVE_OUT reporting a different number of steps than WIPER_MOVE_IN.
+    The steps reported are far above the number of steps that should have occurred during movements.
+    The speedystepper movement won't move a step everytime the loop increments - the reason for the high count is likely due to that.
+    This is a good thing because it confirms that the program is running faster than the fastest movement.
