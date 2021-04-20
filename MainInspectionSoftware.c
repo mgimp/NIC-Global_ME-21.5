@@ -190,12 +190,6 @@ void setup(){
     currPos = 0;  // Renamed to match code
     Serial.print("START_HOMING_CYCLE\n"); // TEST SCRIPT
 
-    // The following is meant to test if the reason for fast gantry movement is the lack of zeroing
-    ss_gantryy.setCurrentPositionInMillimeters(0);  // TEST SCRIPT
-    ss_gantryx.setCurrentPositionInMillimeters(0);  // TEST SCRIPT
-    ss_wiper.setCurrentPositionInMillimeters(0);    // TEST SCRIPT
-    ss_tray.setCurrentPositionInMillimeters(0);     // TEST SCRIPT
-
 }
 
 // -----LOOP STRUCTURE----- //
@@ -268,16 +262,16 @@ void loop() {
             // directionTowardHome is set to -1, toward motor
             // speedInMillimetersPerSecond is set to half max speed
             // maxDistanceToMoveInMillimeters is set to 900mm, the length of gantry Y
-            if ((homingStep == 1) && flag_OOS_gantryy) {}// TEST SCRIPT flag_homingError = ss_gantryy.moveToHomeInMillimeters(-1, 50, 900, DI_HOME_YGANTRY);
+            if ((homingStep == 1) && flag_OOS_gantryy) flag_homingError = ss_gantryy.moveToHomeInMillimeters(-1, 50, 900, DI_HOME_YGANTRY);
 
             // maxDistanceToMoveInMillimeters is set to 350mm, the length of gantry X
-            if ((homingStep == 2) && flag_OOS_gantryx) {}// TEST SCRIPT flag_homingError == ss_gantryx.moveToHomeInMillimeters(-1, 50, 350, DI_HOME_XGANTRY);
+            if ((homingStep == 2) && flag_OOS_gantryx) flag_homingError == ss_gantryx.moveToHomeInMillimeters(-1, 50, 350, DI_HOME_XGANTRY);
 
             // maxDistanceToMoveInMillimeters is set to 500mm, the length of the wiper actuator
-            if ((homingStep == 3) && flag_OOS_wiper) {}// TEST SCRIPT flag_homingError = ss_wiper.moveToHomeInMillimeters(-1, 50, 500, DI_HOME_WIPER);
+            if ((homingStep == 3) && flag_OOS_wiper) flag_homingError = ss_wiper.moveToHomeInMillimeters(-1, 50, 500, DI_HOME_WIPER);
 
             // maxDistanceToMoveInMillimeters is set to 1000mm, the length of the tray actuator
-            if ((homingStep == 4) && flag_OOS_tray) {}// TEST SCRIPT flag_homingError = ss_tray.moveToHomeInMillimeters(-1, 50, 1000, DI_HOME_TRAY);
+            if ((homingStep == 4) && flag_OOS_tray) flag_homingError = ss_tray.moveToHomeInMillimeters(-1, 50, 1000, DI_HOME_TRAY);
                 
             if (homingStep >= 5){
                 currState = FINISH_HOMING_CYCLE;
