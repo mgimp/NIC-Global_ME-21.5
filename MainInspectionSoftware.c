@@ -96,7 +96,9 @@ typedef enum  {
 
     PART_COMPLIANCE_FAILURE,
     
+    START_ERROR_CONDITION,
     ERROR_CONDITION,           // error currState.  currently there is no way to recover from this currState.  This needs fixing.
+    FINISH_ERROR_CONDITION,
 
 } systemState;
 
@@ -208,8 +210,8 @@ void loop() {
     // The stop button will not work in blocking cases
     if (digitalRead(DI_EMERGENCYSTOP)) {
         // do something
-        currState = ERROR_CONDITION;
-        Serial.print("ERROR_CONDITION\n"); // TEST SCRIPT
+        currState = START_ERROR_CONDITION;
+        Serial.print("START_ERROR_CONDITION\n"); // TEST SCRIPT
     }
     
     // -----STATE MACHINE----- //
@@ -226,15 +228,34 @@ void loop() {
         // 1. Any internal error (as determined within individual cases)
         // 2. If the stop button is pressed.
 
-        // ERROR_CONDITION is subject to change at this time -28MAR2021
-        case ERROR_CONDITION:
-            // flash the LED until
-            digitalWrite(DO_WIP,!digitalRead(DO_WIP));
-            delay(500);
+        case START_ERROR_CONDITION:
+            digitalWrite(DO_System_Failure,HIGH); // turn on the RED LED when E.stop button is pressed
+            //update to new case and then break
+            currState = ERROR_CONDITION; //go to emergency stop progress state
+            Serial.print("ERROR_CONDITION\n"); // TEST SCRIPT
+            break; 
 
-            // right now there is no way of exiting an error condition
-            // this is something to be decided
-            // for examlple could have the emergency stop button be latching and you need to undo it and then press start?
+        case ERROR_CONDITION:
+            // Decelerating all four motors to zero velocity
+            ss_gantryy.setupStop();
+            ss_gantryx.setupStop();
+            ss_wiper.setupStop();
+            ss_tray.setupStop();
+
+            //if all 4 motors stop, update the currState to exit state
+            if (ss_gantryy.processMovement() && ss_gantryx.processMovement() && 
+            ss_wiper.processMovement() && ss_tray.processMovement() && !digitalRead(DI_EMERGENCYSTOP))
+            {
+                currState = FINISH_ERROR_CONDITION;
+                Serial.print("FINISH_ERROR_CONDITION\n"); // TEST SCRIPT 
+            }
+            break;
+
+        case FINISH_ERROR_CONDITION:
+            // home the motors, update the currState to Homing Cycle and reset the whole system
+            digitalWrite(DO_System_Failure,LOW);
+            currState = START_HOMING_CYCLE;
+            Serial.print("START_HOMING_CYCLE\n"); // TEST SCRIPT 
             break;
 
         // -----HOMING CYCLE CASES----- //
@@ -304,7 +325,6 @@ void loop() {
         
         case FINISH_TRAY_MOVE_OUT:              // Case exists to extend tray between FINISH_HOMING_CYCLE and WAIT_TO_START
             ss_tray.processMovement();
-            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
             if (ss_tray.motionComplete()){
                 digitalWrite(DO_WIP,LOW);           // Turn on WIP light
                 currState = WAIT_TO_START;
@@ -339,7 +359,6 @@ void loop() {
 
         case FINISH_TRAY_MOVE_IN:   
             ss_tray.processMovement();
-            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
                
             // move the gantry to 0,0              
             ss_gantryx.processMovement();
@@ -374,7 +393,6 @@ void loop() {
         case FINISH_GANTRY_MOVE:
             ss_gantryx.processMovement();
             ss_gantryy.processMovement();
-            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
 
             if (ss_gantryx.processMovement() && ss_gantryy.processMovement()){
                 currState = START_PICTURE;
@@ -454,7 +472,6 @@ void loop() {
 
         case FINISH_WIPER_MOVE_OUT:   
             ss_wiper.processMovement();
-            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
             if (ss_wiper.motionComplete()){
                 delay(200); // a little sloppy delaying here
                 currState = START_WIPER_MOVE_IN;
@@ -470,7 +487,6 @@ void loop() {
 
         case FINISH_WIPER_MOVE_IN:   
             ss_wiper.processMovement();
-            n++; // TEST SCRIPT --> Counts steps in FINISH_MOVEMENT
             
             if (!ss_wiper.motionComplete() && !digitalRead(DI_HOME_WIPER)) flag_OOS_wiper = 1; // Check to see if home switch pressed before movement complete
             
