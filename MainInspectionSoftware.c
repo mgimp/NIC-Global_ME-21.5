@@ -4,43 +4,37 @@
 // digital IO pins
 // DO = digital output
 // DI = digital input
-#define DO_XGANTRY_DIR  5
-#define DO_XGANTRY_PUL  3
-#define DO_YGANTRY_DIR  5
-#define DO_YGANTRY_PUL  4
-#define DO_WIPER_DIR    5
-#define DO_WIPER_PUL    2
-#define DO_TRAY_DIR     5
-#define DO_TRAY_PUL     1
+#define DO_XGANTRY_DIR  3
+#define DO_XGANTRY_PUL  4
+#define DO_YGANTRY_DIR  1
+#define DO_YGANTRY_PUL  2
+#define DO_WIPER_DIR    69 
+#define DO_WIPER_PUL    68
+#define DO_TRAY_DIR     66
+#define DO_TRAY_PUL     65
 
 // home switch should be setup so there are alway HIGH unless triggered
 // this provide a better default in case the wiring fails
-#define DI_HOME_XGANTRY 0
-#define DI_HOME_YGANTRY 0
-#define DI_HOME_WIPER   0
-#define DI_HOME_TRAY    0   // the home should be on the inside of the inspection chamber
-
-// home switch values
-#define HOMESWITCH_PRESSED LOW      // exists to clarify home switch states
-#define HOMESWITCH_RELEASED HIGH    // exists to clarify home switch states
-// example:
-// if (digitalRead(DI_HOME_YGANTRY) == HOMESWITCH_PRESSED)
+#define DI_HOME_XGANTRY 58   // DOES NOT MATCH WIRING DIAGRAM 29APR2021
+#define DI_HOME_YGANTRY 57   // DOES NOT MATCH WIRING DIAGRAM 29APR2021
+#define DI_HOME_WIPER   56  // DOES NOT MATCH WIRING DIAGRAM 29APR2021
+#define DI_HOME_TRAY    54  // the home should be on the inside of the inspection chamber
 
 // button inputs
-#define DI_EMERGENCYSTOP 6
-#define DI_START         7   // a momentary switch to start the inspection
+#define DI_EMERGENCYSTOP 55 
+#define DI_START         19   // a momentary switch to start the inspection
 
 // LED inputs
 #define DO_Ready          14    //Green LED on for ready status
-#define DO_WIP            16    //Yellow LED blinking for cycle in progress
-#define DO_Part_Failure   15    //RED LED Blinking for part failure
+#define DO_WIP            15    //Yellow LED blinking for cycle in progress
+#define DO_Part_Failure   16    //RED LED Blinking for part failure
 #define DO_System_Failure 17    //RED LED Steady for system failure
     
 // camera
-#define DO_CAM_TAKEPICTURE 9
+#define DO_CAM_TAKEPICTURE 11
 #define DI_CAM_GOTPICTURE  10
-#define DI_CAM_FAILED      11 
-#define DI_CAM_MISPRINT    12 
+#define DI_CAM_FAILED      9 
+#define DI_CAM_MISPRINT    8 
 
     
 #define NPOS 9  // number of points the gantry must move to capture the pictures
@@ -257,7 +251,7 @@ void loop() {
             currState = START_HOMING_CYCLE;
             Serial.print("START_HOMING_CYCLE\n"); // TEST SCRIPT 
             break;
-
+ 
         // -----HOMING CYCLE CASES----- //
         case START_HOMING_CYCLE:
             digitalWrite(DO_WIP,HIGH);              // Turn on WIP light
