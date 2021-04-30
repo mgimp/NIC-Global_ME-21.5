@@ -1,18 +1,12 @@
 /* README
-Code written for NIC Global Inc.
+Written at NIC Global during the site tour.
 
-Association:
-    Seattle University
-    Mechanical Engineering Graduating Class 2021
-    Team 21.5
-    Vision System for Silk Screen Inspection
+This code is a modified version of the MainInspectionSoftware designed to run through the inspection cycle process without interacting with the camera.
+Its purpose is to verify that the inspection system operates as desired prior to programming the camera or camera interactions.
+This code assumes that every component of the inspection system has been assembled and powered with the exception of the camera and computer vision software.
 
-Authors:
-    Greg Mason
-    David Shulman
-    Robert Wheeler
-    Linh Ngo
-    Matthew Gimpelevich -- mgimpelevich@seattleu.edu
+You can control the program flow byt powering or grounding the misprint pin.
+The cam failed pin is not used in this iteration of the program.
 */
 
 #include "Arduino.h"
@@ -55,8 +49,8 @@ Authors:
 
     
 #define NPOS 9  // number of points the gantry must move to capture the pictures
-#define Y 1     // the long gantry direction
 #define X 0     // the short gantry direction
+#define Y 1     // the long gantry direction
 
 // xy position to move to.  These are in steps from the home position
 float xyposition[NPOS][2] = {
@@ -114,11 +108,11 @@ typedef enum  {
 } systemState;
 
 // -----VARIOUS GLOBAL VARIABLES-----
-systemState currState;  // this holds the current system currState
-int currPos;            // keeps track of where we are on the gantry
+systemState currState;      // this holds the current system currState
+int currPos;                // keeps track of where we are on the gantry
 
 // added as global for consistency
-int homingStep;         // A variable for keeping track of which gantry is being homed
+int homingStep;             // A variable for keeping track of which gantry is being homed
 int flag_homingError;       // A variable for keeping track of gantry homing success
 
 // OOS Errors start as 1 so that an initial homing cycle will happen
@@ -142,17 +136,17 @@ int initializeMotorSpeeds(){
     ss_wiper.setStepsPerMillimeter(17.5 * 2);
     ss_tray.setStepsPerMillimeter(17.5 * 2);
     
-    ss_gantryx.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
-    ss_gantryx.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
+    ss_gantryx.setSpeedInMillimetersPerSecond(228.57);
+    ss_gantryx.setAccelerationInMillimetersPerSecondPerSecond(271.43);
     
-    ss_gantryy.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
-    ss_gantryy.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
+    ss_gantryy.setSpeedInMillimetersPerSecond(228.57);
+    ss_gantryy.setAccelerationInMillimetersPerSecondPerSecond(271.43);
 
-    ss_wiper.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
-    ss_wiper.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
+    ss_wiper.setSpeedInMillimetersPerSecond(228.57);
+    ss_wiper.setAccelerationInMillimetersPerSecondPerSecond(271.43);
 
-    ss_tray.setSpeedInMillimetersPerSecond(228.57); // TEST SCRIPT
-    ss_tray.setAccelerationInMillimetersPerSecondPerSecond(271.43); // TEST SCRIPT
+    ss_tray.setSpeedInMillimetersPerSecond(228.57);
+    ss_tray.setAccelerationInMillimetersPerSecondPerSecond(271.43);
     
     ss_tray.setSpeedInMillimetersPerSecond(228.57);
     ss_tray.setAccelerationInMillimetersPerSecondPerSecond(271.43);
@@ -192,11 +186,6 @@ void setup(){
     digitalWrite(DO_Ready,LOW);             // Turn off Ready light
     digitalWrite(DO_Part_Failure,LOW);      // Turn off Part Failure light
     digitalWrite(DO_System_Failure,LOW);    // Turn off System Failure light
-
-    // setup the camera IO
-    // ?
- 
-    // do any other camera initialization
 
      // initialize the currState;
     currState = START_HOMING_CYCLE;
@@ -248,6 +237,7 @@ void loop() {
 
         case ERROR_CONDITION:
             // Decelerating all four motors to zero velocity
+            // This will happen after the actuators have been disconected from power
             ss_gantryy.setupStop();
             ss_gantryx.setupStop();
             ss_wiper.setupStop();
@@ -371,7 +361,8 @@ void loop() {
         case FINISH_TRAY_MOVE_IN:   
             ss_tray.processMovement();
                
-            // move the gantry to 0,0              
+            // move the gantry to 0,0   
+            // NOTE: The gantry should already be at 0,0 here, so the check is instantanious unless something has gone wring in a previous cycle           
             ss_gantryx.processMovement();
             ss_gantryy.processMovement();
             
@@ -417,17 +408,22 @@ void loop() {
             digitalWrite(DO_CAM_TAKEPICTURE,HIGH);
             delay(20);
             digitalWrite(DO_CAM_TAKEPICTURE,LOW);      
-            currState= WAIT_FOR_PICTURE;
-            Serial.print("WAIT_FOR_PICTURE\n"); // TEST SCRIPT
+            // currState= WAIT_FOR_PICTURE;
+            // Serial.print("WAIT_FOR_PICTURE\n"); // TEST SCRIPT
+
+            // -----SPECIAL SCRIPT----- //
+            // Skip the WAIT_FOR_PICTURE case so that we can run through everything without needing a camera
+            currState=NEXT_PICTURE;
+            Serial.print("NEXT_PICTURE\n"); // TEST SCRIPT
             break;
 
-        case WAIT_FOR_PICTURE:
-            if (digitalRead(DI_CAM_GOTPICTURE)==HIGH) {
-                // record the data is needed
-                currState=NEXT_PICTURE;
-                Serial.print("NEXT_PICTURE\n"); // TEST SCRIPT
-            }
-            break;
+        // case WAIT_FOR_PICTURE:
+        //     if (digitalRead(DI_CAM_GOTPICTURE)==HIGH) {
+        //         // record the data is needed
+        //         currState=NEXT_PICTURE;
+        //         Serial.print("NEXT_PICTURE\n"); // TEST SCRIPT
+        //     }
+        //     break;
         
         case NEXT_PICTURE:
                 if (currPos < NPOS){
@@ -436,31 +432,42 @@ void loop() {
                     Serial.print("START_GANTRY_MOVE\n"); // TEST SCRIPT
                 } else { //After all 8 positions has been completed
                     currState = FINISH_PICTURE;
+                    currPos = 0;
                     Serial.print("FINISH_PICTURE\n"); // TEST SCRIPT
                 }
             break;            
 
         case FINISH_PICTURE:
-            if (digitalRead(DI_CAM_FAILED)==LOW){
+            // if (digitalRead(DI_CAM_FAILED)==LOW){
                 
-                if (digitalRead(DI_CAM_MISPRINT) ==LOW) {
+                // -----SPECIAL SCRIPT----- //
+                // You can control the program flow byt powering or grounding the misprint pin.
+                // The cam failed pin is not used in this iteration of the program.
+
+                if (digitalRead(DI_CAM_MISPRINT) == LOW) {
 
                     // finished all of the inspections and they all passed
                     currState = START_WIPER_MOVE_OUT;
                     Serial.print("START_WIPER_MOVE_OUT\n"); // TEST SCRIPT
 
                 } else {
+                    // currPos++; // the next picture
+                    // currState = START_GANTRY_MOVE; // move to the next gantry position position 
+                    // Serial.print("START_GANTRY_MOVE\n"); // TEST SCRIPT
+
+                    // -----CORRECTIVE SCRIPT----- //
                     currState = PART_COMPLIANCE_FAILURE; // failed inspection
                     Serial.print("PART_COMPLIANCE_FAILURE\n"); // TEST SCRIPT
                 }
-            } else {
-                if (digitalRead(DI_CAM_MISPRINT)==HIGH){
-                    digitalWrite(DO_WIP,LOW);
-                    currState = PART_COMPLIANCE_FAILURE; // failed inspection
-                    Serial.print("PART_COMPLIANCE_FAILURE\n"); // TEST SCRIPT
+            // } 
+            // else {
+                // if (digitalRead(DI_CAM_MISPRINT)==HIGH){
+                //     digitalWrite(DO_WIP,LOW);
+                //     currState = PART_COMPLIANCE_FAILURE; // failed inspection
+                //     Serial.print("PART_COMPLIANCE_FAILURE\n"); // TEST SCRIPT
                 // record a failure (? within compliance case)
-                }
-            }
+            //     }
+            // }
             break;
 
         case PART_COMPLIANCE_FAILURE:

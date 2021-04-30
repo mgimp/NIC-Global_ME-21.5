@@ -1,0 +1,7 @@
+[362 - 363] FINISH_TRAY_MOVE_IN
+    Move the homing check for the gantries to occur after they have run through all of their positions.
+    On the other hand, the gantries should already be at 0,0 here so maybe it isn't worth moving.
+
+[446] FINISH_PICTURE
+    I noticed that the NEXT_PICTURE case instructions are duplicated in FINISH_PICTURE in a way that doesn't make sense. 
+    I need to correct this in the main programming.
