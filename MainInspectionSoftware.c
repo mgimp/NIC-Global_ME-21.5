@@ -247,9 +247,11 @@ void loop() {
 
         case FINISH_ERROR_CONDITION:
             // home the motors, update the currState to Homing Cycle and reset the whole system
-            digitalWrite(DO_System_Failure,LOW);
-            currState = START_HOMING_CYCLE;
-            Serial.print("START_HOMING_CYCLE\n"); // TEST SCRIPT 
+            if(digitalWrite(DI_START)){
+                digitalWrite(DO_System_Failure,LOW);
+                currState = START_HOMING_CYCLE;
+                Serial.print("START_HOMING_CYCLE\n"); // TEST SCRIPT 
+            }
             break;
  
         // -----HOMING CYCLE CASES----- //
